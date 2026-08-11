@@ -2,9 +2,9 @@
 
 **Демо:** https://artem-nikiforov.github.io/ku-sauces-trainer/
 
-Собран на [ku-design-system](https://github.com/artem-nikiforov/ku-sauces-trainer).
-SCORM 1.2, один самодостаточный `index.html`, без сборки и внешних
-зависимостей. Работает офлайн и в LMS.
+Собран на `ku-design-system` — внутренней дизайн-системе корпоративных курсов
+(отдельный непубличный репозиторий). SCORM 1.2, один самодостаточный
+`index.html`, без сборки и внешних зависимостей. Работает офлайн и в LMS.
 
 > ⚠️ **Репозиторий публичный, и в нём лежат материалы ограниченного
 > использования.** По [NOTICE](NOTICE): шрифт `fonts/Flame-*.otf` и логотип
