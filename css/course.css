@@ -1,0 +1,673 @@
+/* ════════════════════════════════════════════════════════════════════════
+   КУРСОВЫЕ КОМПОНЕНТЫ «Работа с соусами»
+
+   Всё, чего нет в ДС: стеллаж, корзинки, соус в руке, пакет, крупный план
+   этикетки, эмоции, коробка с заказом, медали, чек-лист ошибок.
+
+   Правила, которым файл следует (docs/PRINCIPLES.md):
+   • ни одного сырого цвета/размера — только токены --ku-*;
+   • состояния из словаря ДС: .correct / .wrong / .solved / .is-done / .show;
+   • анимируем только transform и opacity;
+   • префикс .sx- (sauce trainer) — чтобы курсовые классы никогда не
+     столкнулись с будущими компонентами ДС.
+
+   ТАЧ-FIRST: тренажёр проходят с планшета и личного телефона. Поэтому все
+   цели ≥44px, ни одного действия только по ховеру, игровое поле влезает
+   в ~560px по высоте без внутреннего скролла (в LMS iframe низкий).
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ══ 1. ИГРОВОЕ ПОЛЕ ТРЕНАЖЁРА ══════════════════════════════════════════
+   Никакого 100vh: в LMS высота iframe непредсказуема (часто 600–700px со
+   своим скроллом), поле обязано жить в потоке страницы. */
+/* ВНИМАНИЕ про токены поверхностей: в тёмной теме ДС перекрашивает --ku-bg,
+   --ku-card и --ku-text, но --ku-surface и --ku-surface-2 остаются светлыми
+   (#fff и #f2f4f6). Поэтому фоны здесь строятся на --ku-card и color-mix от
+   --ku-text — они честно переворачиваются в обеих темах. */
+.sx-field {
+  position: relative;
+  display: grid;
+  gap: var(--ku-space-xs);
+  /* На десктопе поле не растягиваем: иначе 15 корзинок раздуваются до 200px
+     и стеллаж превращается в стену цвета вместо «полки с уголками».
+     Ширина поля — единственный рычаг размера корзинок: ограничивать высоту
+     самой корзинки нельзя, она рассинхронит сетку с колонками. */
+  max-width: 34rem;
+  margin-inline: auto;
+  padding: var(--ku-space-s);
+  background: color-mix(in srgb, var(--ku-text) 5%, var(--ku-card));
+  border: var(--ku-border-w) solid var(--ku-border);
+  border-radius: var(--ku-radius-l);
+  box-shadow: var(--ku-shadow-s);
+  overflow: hidden;                     /* крупный план не должен вылезать */
+}
+
+/* Полоса статуса: режим, номер заказа, счёт, таймер */
+.sx-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ku-space-2xs);
+  font: 600 0.8rem/1.2 var(--ku-font-body);
+  color: var(--ku-text-soft);
+}
+.sx-status__spacer { flex: 1 1 auto; }
+.sx-status .ku-badge { white-space: nowrap; }
+
+/* Таймер: последние 10 секунд — тревожный акцент. Пульсация — только
+   transform, и она сама отключится при prefers-reduced-motion. */
+.sx-timer.is-hot {
+  background: var(--ku-danger);
+  color: #fff;
+  border-color: transparent;
+  animation: sx-pulse 1s var(--ku-ease) infinite;
+}
+@keyframes sx-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sx-timer.is-hot { animation: none; }
+}
+
+/* ══ 2. ЗАКАЗ ГОСТЯ ═════════════════════════════════════════════════════
+   Слева на экране — текст заказа. Это главный якорь внимания, поэтому
+   контрастная плашка и крупный шрифт: его должно быть видно, не вглядываясь. */
+.sx-order {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 var(--ku-space-2xs);
+  padding: var(--ku-space-2xs) var(--ku-space-s);
+  background: var(--ku-brand);
+  color: var(--ku-brand-on);
+  border-radius: var(--ku-radius-m);
+}
+.sx-order__label {
+  font: 700 0.7rem/1.4 var(--ku-font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.sx-order__name {
+  font: 700 clamp(1.05rem, 4.6vw, 1.6rem)/1.15 var(--ku-font-display);
+  text-transform: uppercase;
+}
+
+/* ══ 3. СТЕЛЛАЖ И КОРЗИНКИ ══════════════════════════════════════════════
+   В корзинке видны ТОЛЬКО цветные уголки этикеток — как в реальной жизни.
+   Соусы стоят хаотично и вплотную, похожие цвета рядом: интерфейс намеренно
+   провоцирует схватить наугад, чтобы натренировать привычку читать. */
+.sx-shelf {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--ku-space-3xs);
+  padding: var(--ku-space-2xs);
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--ku-text) 12%, transparent) 0 3px,
+      transparent 3px);
+  background-color: color-mix(in srgb, var(--ku-text) 6%, var(--ku-card));
+  border-radius: var(--ku-radius-m);
+}
+/* Корзинка. min-height держит палец: 44px даже на 320px-экране. */
+.sx-bin {
+  position: relative;
+  /* На узких экранах корзинки квадратные: три ряда по 5 при 4/5 съедали
+     лишние ~55px высоты, а поле должно влезать в низкий iframe LMS. */
+  aspect-ratio: 1 / 1;
+  min-height: 2.75rem;
+  padding: 0;
+  border: var(--ku-border-w) solid color-mix(in srgb, var(--ku-text) 22%, transparent);
+  border-radius: var(--ku-radius-s);
+  background: var(--ku-card);
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform var(--ku-dur-fast) var(--ku-ease-spring),
+              box-shadow var(--ku-dur-fast) var(--ku-ease);
+}
+
+/* Порядок важен: этот блок обязан стоять ПОСЛЕ базового .sx-bin, иначе при
+   равной специфичности базовое правило перебьёт медиазапрос. */
+@media (min-width: 40rem) {
+  /* На широком экране раскладываем полку в 8 колонок (два ряда вместо трёх):
+     реальный стеллаж шире, чем выше, и — главное — пакет остаётся в виду
+     одновременно со стеллажом, иначе перетаскивание требует прокрутки
+     посреди жеста. */
+  .sx-shelf {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: var(--ku-space-2xs);
+  }
+  .sx-bin { aspect-ratio: 4 / 5; }      /* места хватает — вернём пропорции банки */
+}
+.sx-bin:hover  { transform: translateY(-2px); box-shadow: var(--ku-shadow-s); }
+.sx-bin:active { transform: translateY(0); }
+.sx-bin:focus-visible {
+  outline: 3px solid var(--ku-brand-ring);
+  outline-offset: 2px;
+}
+
+/* Уголок этикетки: только он и торчит из корзинки.
+   --c1/--c2 подставляются из js/sauces.js. */
+.sx-bin__corner {
+  position: absolute;
+  inset: 0 0 34% 0;
+  background: linear-gradient(150deg, var(--c1) 0 62%, var(--c2) 62% 100%);
+  border-radius: var(--ku-radius-s) var(--ku-radius-s) 0 0;
+}
+.sx-bin.is-round .sx-bin__corner { border-radius: 50% 50% 40% 40% / 60% 60% 40% 40%; }
+
+/* «Планка» корзинки — передняя стенка, из-за которой торчит уголок */
+.sx-bin__lip {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 36%;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--ku-text) 26%, var(--ku-card)),
+    color-mix(in srgb, var(--ku-text) 14%, var(--ku-card)));
+  border-top: var(--ku-border-w) solid color-mix(in srgb, var(--ku-text) 30%, transparent);
+}
+
+/* Корзинка, из которой соус уже взят в руку */
+.sx-bin.is-taken { opacity: 0.4; pointer-events: none; }
+
+/* Полоса отметок: галочка/крест напротив каждого собранного заказа.
+   Живёт отдельно от стеллажа — корзинки в экзамене перемешиваются. */
+.sx-marks { display: flex; flex-wrap: wrap; gap: var(--ku-space-3xs); min-height: 1.25rem; }
+.sx-mark {
+  display: grid; place-items: center;
+  width: 1.15rem; height: 1.15rem;
+  border-radius: 50%;
+  color: #fff;
+  animation: sx-mark-in var(--ku-dur-base) var(--ku-ease-spring);
+}
+.sx-mark.correct { background: var(--ku-success); }
+.sx-mark.wrong   { background: var(--ku-danger); }
+@keyframes sx-mark-in {
+  from { transform: scale(0.4); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* ══ 4. СОУС В РУКЕ ═════════════════════════════════════════════════════
+   Появляется после клика по корзинке. Здесь два пути: сразу перетащить
+   (быстро, +1 балл) или приблизить этикетку и прочитать (+5). */
+.sx-hand {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--ku-space-s);
+  min-height: 4.75rem;
+  padding: var(--ku-space-2xs) var(--ku-space-s);
+  background: var(--ku-card);
+  border: var(--ku-border-w) dashed var(--ku-border);
+  border-radius: var(--ku-radius-m);
+}
+.sx-hand .ku-btn { padding-block: 0.45em; }
+.sx-hand.is-empty { justify-items: center; grid-template-columns: 1fr; }
+.sx-hand__hint {
+  font: 400 0.85rem/1.4 var(--ku-font-body);
+  color: var(--ku-text-muted);
+  text-align: center;
+}
+.sx-hand__actions { display: flex; flex-wrap: wrap; gap: var(--ku-space-2xs); }
+
+/* Сам соус — то, что перетаскивают. touch-action:none обязателен,
+   иначе палец уйдёт в скролл страницы вместо драга. */
+.sx-cup {
+  position: relative;
+  width: 4.5rem;
+  flex: 0 0 auto;
+  border: none;
+  padding: 0;
+  background: none;
+  border-radius: var(--ku-radius-s);
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  box-shadow: var(--ku-shadow-s);
+  transition: transform var(--ku-dur-fast) var(--ku-ease-spring);
+}
+.sx-cup img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--ku-radius-s);
+  pointer-events: none;                 /* чтобы drag ловил кнопку, а не img */
+}
+.sx-cup:focus-visible { outline: 3px solid var(--ku-brand-ring); outline-offset: 3px; }
+.sx-cup.dragging {
+  cursor: grabbing;
+  z-index: 40;
+  box-shadow: var(--ku-shadow-l);
+  transform: scale(1.06);
+  transition: none;                     /* за пальцем — без задержки */
+}
+
+/* ══ 5. ПАКЕТ — зона сброса ═════════════════════════════════════════════ */
+.sx-bag {
+  position: relative;
+  display: grid;
+  place-items: center;
+  gap: var(--ku-space-3xs);
+  min-height: 3.75rem;
+  padding: var(--ku-space-2xs);
+  color: var(--ku-text-soft);
+  background: color-mix(in srgb, var(--ku-brand) 6%, var(--ku-card));
+  border: var(--ku-border-w-2) dashed color-mix(in srgb, var(--ku-brand) 45%, transparent);
+  border-radius: var(--ku-radius-m);
+  text-align: center;
+  transition: background-color var(--ku-dur-fast) var(--ku-ease),
+              border-color var(--ku-dur-fast) var(--ku-ease);
+}
+.sx-bag__label { font: 700 0.8rem/1.2 var(--ku-font-body); }
+.sx-bag.drag-over {
+  background: var(--ku-brand-soft);
+  border-color: var(--ku-brand);
+  border-style: solid;
+}
+.sx-bag.is-disabled { opacity: 0.5; }
+
+/* ══ 6. КРУПНЫЙ ПЛАН ЭТИКЕТКИ ═══════════════════════════════════════════
+   Оверлей внутри поля, а не модалка на всю страницу: не добавляет высоты
+   (важно для низкого iframe) и не теряет контекст заказа. */
+.sx-zoom {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  gap: var(--ku-space-xs);
+  padding: var(--ku-space-s);
+  background: color-mix(in srgb, var(--ku-text) 72%, transparent);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--ku-dur-base) var(--ku-ease);
+}
+.sx-zoom.show { opacity: 1; visibility: visible; }
+.sx-zoom__card {
+  display: grid;
+  gap: var(--ku-space-2xs);
+  justify-items: center;
+  max-width: min(100%, 19rem);
+  padding: var(--ku-space-s);
+  background: var(--ku-card);
+  border-radius: var(--ku-radius-l);
+  box-shadow: var(--ku-shadow-l);
+}
+.sx-zoom__img {
+  display: block;
+  width: 100%;
+  max-height: 42vh;
+  min-height: 0;
+  object-fit: contain;                  /* этикетку не режем ни на каком экране */
+  border-radius: var(--ku-radius-s);
+}
+/* Название — то, ради чего весь курс. Выделено жирным, как просит сценарий. */
+.sx-zoom__name {
+  font: 700 clamp(1.05rem, 4.4vw, 1.35rem)/1.2 var(--ku-font-display);
+  color: var(--ku-text);
+  text-align: center;
+  text-transform: uppercase;
+}
+.sx-zoom__brand { font: 400 0.8rem/1.3 var(--ku-font-body); color: var(--ku-text-muted); }
+.sx-zoom__actions { display: flex; flex-wrap: wrap; gap: var(--ku-space-2xs); justify-content: center; }
+
+/* ══ 7. МГНОВЕННАЯ РЕАКЦИЯ (режим 1 и экзамен) ══════════════════════════
+   «Красный экран» / «зелёный экран» из сценария. Закрывает человек кнопкой —
+   никаких автопереходов по таймеру (правило ДС). */
+.sx-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 35;
+  display: grid;
+  place-content: center;
+  gap: var(--ku-space-s);
+  padding: var(--ku-space-l) var(--ku-space-m);
+  text-align: center;
+  color: #fff;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--ku-dur-base) var(--ku-ease);
+}
+.sx-flash.show { opacity: 1; visibility: visible; }
+.sx-flash.correct { background: var(--ku-success); }
+.sx-flash.wrong   { background: var(--ku-danger); }
+.sx-flash__title {
+  font: 700 clamp(1.3rem, 6vw, 2.1rem)/1.1 var(--ku-font-display);
+  text-transform: uppercase;
+}
+.sx-flash__text { font: 400 0.95rem/1.45 var(--ku-font-body); }
+.sx-flash__text b { font-weight: 700; }
+.sx-flash .ku-btn { justify-self: center; }
+
+/* ══ 8. СТРИК «ИДЕАЛЬНО!» ═══════════════════════════════════════════════
+   5 верных подряд. Живёт поверх поля и гаснет сам — это украшение,
+   а не обратная связь, поэтому автоскрытие здесь допустимо. */
+.sx-streak {
+  position: absolute;
+  inset: auto 0 35% 0;
+  z-index: 38;
+  display: grid;
+  justify-items: center;
+  gap: var(--ku-space-3xs);
+  pointer-events: none;
+  opacity: 0;
+}
+.sx-streak.show { animation: sx-streak var(--ku-dur-slow) var(--ku-ease-spring); }
+.sx-streak__word {
+  padding: var(--ku-space-2xs) var(--ku-space-m);
+  font: 700 clamp(1.2rem, 5.5vw, 1.9rem)/1 var(--ku-font-display);
+  letter-spacing: 0.04em;
+  color: var(--ku-brand-on);
+  background: var(--ku-grad-brand);
+  border-radius: var(--ku-radius-pill);
+  box-shadow: var(--ku-shadow-brand);
+}
+.sx-streak__sub {
+  font: 700 0.75rem/1 var(--ku-font-body);
+  color: var(--ku-text-on-dark);
+  background: color-mix(in srgb, var(--ku-text) 70%, transparent);
+  padding: var(--ku-space-3xs) var(--ku-space-2xs);
+  border-radius: var(--ku-radius-pill);
+}
+@keyframes sx-streak {
+  0%   { opacity: 0; transform: scale(0.6); }
+  25%  { opacity: 1; transform: scale(1.08); }
+  70%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sx-streak.show { animation: none; opacity: 1; }
+}
+
+/* ══ 9. КАРТА СОУСОВ (модуль 3) ═════════════════════════════════════════
+   Тап увеличивает этикетку и выделяет название. Ховер — приятный бонус
+   для мыши, но НЕ единственный способ: на планшете ховера не существует. */
+.sx-map {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: var(--ku-space-2xs);
+}
+.sx-map__item {
+  position: relative;
+  display: grid;
+  gap: var(--ku-space-3xs);
+  padding: var(--ku-space-3xs);
+  background: var(--ku-card);
+  border: var(--ku-border-w) solid var(--ku-border-soft);
+  border-radius: var(--ku-radius-m);
+  cursor: pointer;
+  text-align: center;
+  transition: transform var(--ku-dur-fast) var(--ku-ease-spring),
+              box-shadow var(--ku-dur-fast) var(--ku-ease),
+              border-color var(--ku-dur-fast) var(--ku-ease);
+}
+.sx-map__item img { display: block; width: 100%; height: auto; border-radius: var(--ku-radius-s); }
+.sx-map__item figcaption {
+  font: 400 0.7rem/1.2 var(--ku-font-body);
+  color: var(--ku-text-soft);
+}
+.sx-map__item:hover,
+.sx-map__item.is-open {
+  transform: scale(1.06);
+  z-index: 5;
+  border-color: var(--ku-brand);
+  box-shadow: var(--ku-shadow-m);
+}
+/* Название выделяется жирным — «этикетка волшебным образом увеличивается,
+   и название выделяется жирным шрифтом» из сценария */
+.sx-map__item:hover figcaption,
+.sx-map__item.is-open figcaption {
+  font-weight: 700;
+  color: var(--ku-brand-strong);
+}
+.sx-map__item.correct {
+  border-color: var(--ku-success);
+  box-shadow: inset 0 0 0 2px var(--ku-success);
+}
+
+/* ══ 10. ВЫБОР БЛЮДА И ЭМОЦИЙ (модуль 1) ═══════════════════════════════ */
+.sx-pick {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: var(--ku-space-2xs);
+}
+.sx-pick__btn {
+  display: grid;
+  justify-items: center;
+  gap: var(--ku-space-3xs);
+  padding: var(--ku-space-s) var(--ku-space-2xs);
+  background: var(--ku-card);
+  border: var(--ku-border-w-2) solid var(--ku-border);
+  border-radius: var(--ku-radius-l);
+  color: var(--ku-text);
+  font: 600 0.9rem/1.25 var(--ku-font-body);
+  text-align: center;
+  cursor: pointer;
+  transition: transform var(--ku-dur-fast) var(--ku-ease-spring),
+              border-color var(--ku-dur-fast) var(--ku-ease),
+              background-color var(--ku-dur-fast) var(--ku-ease);
+}
+.sx-pick__btn:hover { transform: translateY(-3px); border-color: var(--ku-brand); }
+.sx-pick__btn svg   { width: 3.25rem; height: 3.25rem; }
+.sx-pick__btn.correct,
+.sx-pick__btn.is-on {
+  border-color: var(--ku-brand);
+  background: var(--ku-brand-soft);
+}
+.sx-pick__btn.is-off { opacity: 0.45; }
+.sx-pick__btn[disabled] { cursor: default; }
+
+/* Сетка соусов для выбора «идеальных» и «испорченных» */
+.sx-choose {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: var(--ku-space-2xs);
+}
+.sx-choose__btn {
+  position: relative;
+  padding: 0;
+  border: var(--ku-border-w-2) solid transparent;
+  border-radius: var(--ku-radius-m);
+  background: none;
+  cursor: pointer;
+  transition: transform var(--ku-dur-fast) var(--ku-ease-spring),
+              border-color var(--ku-dur-fast) var(--ku-ease);
+}
+.sx-choose__btn img { display: block; width: 100%; height: auto; border-radius: var(--ku-radius-s); }
+.sx-choose__btn figcaption {
+  font: 400 0.65rem/1.15 var(--ku-font-body);
+  color: var(--ku-text-soft);
+  padding-top: var(--ku-space-3xs);
+}
+.sx-choose__btn:hover  { transform: translateY(-2px); }
+.sx-choose__btn.is-on  { border-color: var(--ku-brand); }
+.sx-choose__btn.is-bad { border-color: var(--ku-danger); }
+.sx-choose__btn.is-on::after,
+.sx-choose__btn.is-bad::after {
+  content: "";
+  position: absolute;
+  top: 0.2rem; right: 0.2rem;
+  width: 1.1rem; height: 1.1rem;
+  border-radius: 50%;
+  background: var(--ku-brand);
+}
+.sx-choose__btn.is-bad::after { background: var(--ku-danger); }
+.sx-choose__btn[disabled] { cursor: default; opacity: 0.5; }
+.sx-choose__btn.is-on[disabled],
+.sx-choose__btn.is-bad[disabled] { opacity: 1; }
+
+/* ══ 11. КОРОБКА С ЗАКАЗОМ (модуль 1) ══════════════════════════════════
+   Нарисована SVG, открывается по CSS. Заказ приезжает — и в нём НЕ тот соус. */
+.sx-box { display: grid; justify-items: center; gap: var(--ku-space-s); }
+.sx-box__art { position: relative; width: min(100%, 22rem); }
+.sx-box__art svg { display: block; width: 100%; height: auto; }
+.sx-box__lid {
+  transform-origin: 50% 88%;
+  transition: transform var(--ku-dur-slow) var(--ku-ease-out);
+}
+.sx-box.is-open .sx-box__lid { transform: rotateX(0) translateY(-14%) rotate(-8deg); }
+.sx-box__inside { opacity: 0; transition: opacity var(--ku-dur-slow) var(--ku-ease); }
+.sx-box.is-open .sx-box__inside { opacity: 1; }
+/* Соус, который лежит в коробке — тот самый «испорченный» */
+.sx-box__sauce {
+  position: absolute;
+  right: 8%;
+  bottom: 6%;
+  width: 30%;
+  opacity: 0;
+  transform: scale(0.7) translateY(1rem);
+  transition: opacity var(--ku-dur-slow) var(--ku-ease),
+              transform var(--ku-dur-slow) var(--ku-ease-spring);
+}
+.sx-box__sauce img { display: block; width: 100%; height: auto;
+  border-radius: var(--ku-radius-s); box-shadow: var(--ku-shadow-m); }
+.sx-box.is-open .sx-box__sauce { opacity: 1; transform: scale(1) translateY(0); }
+
+/* ══ 12. ГОСТЬ: довольный / расстроенный ════════════════════════════════
+   Сейчас SVG-заглушки. Если в assets/scene/ положить настоящие картинки,
+   JS покажет их и скроет SVG — см. assets/ASSETS.md. */
+.sx-guest { display: grid; justify-items: center; gap: var(--ku-space-2xs); }
+.sx-guest__art { width: min(100%, 15rem); }
+.sx-guest__art svg,
+.sx-guest__art img { display: block; width: 100%; height: auto; border-radius: var(--ku-radius-l); }
+.sx-guest__cap {
+  font: 400 0.85rem/1.4 var(--ku-font-body);
+  color: var(--ku-text-soft);
+  text-align: center;
+}
+
+/* ══ 13. ИТОГИ: медали, чек-лист ошибок ════════════════════════════════ */
+.sx-medal { display: grid; justify-items: center; gap: var(--ku-space-2xs); }
+.sx-medal__disc {
+  display: grid;
+  place-items: center;
+  width: 5.5rem; height: 5.5rem;
+  border-radius: 50%;
+  font: 700 0.85rem/1 var(--ku-font-body);
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--ku-text) 82%, transparent);
+  box-shadow: var(--ku-shadow-m);
+}
+.sx-medal.gold   .sx-medal__disc { background: linear-gradient(150deg, #F7D774, #C79A21); }
+.sx-medal.silver .sx-medal__disc { background: linear-gradient(150deg, #E8EAEE, #A6ADB8); }
+.sx-medal.bronze .sx-medal__disc { background: linear-gradient(150deg, #E5A970, #A9682F); }
+
+/* Чек-лист ошибок режима 2: «красным маркером выделено» из сценария */
+.sx-check { display: grid; gap: var(--ku-space-2xs); }
+.sx-check__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--ku-space-2xs);
+  padding: var(--ku-space-2xs) var(--ku-space-s);
+  background: var(--ku-card);
+  border: var(--ku-border-w) solid var(--ku-border-soft);
+  border-left: 4px solid var(--ku-success);
+  border-radius: var(--ku-radius-m);
+  font: 400 0.9rem/1.4 var(--ku-font-body);
+}
+.sx-check__row.wrong {
+  border-left-color: var(--ku-danger);
+  background: var(--ku-danger-soft);
+}
+/* «Маркер» — подчёркнутая заливка, а не просто красный текст */
+.sx-check__row.wrong b {
+  background: color-mix(in srgb, var(--ku-danger) 22%, transparent);
+  box-shadow: 0 -0.35em 0 0 color-mix(in srgb, var(--ku-danger) 22%, transparent) inset;
+  padding: 0 0.15em;
+}
+.sx-check__num { font-weight: 700; color: var(--ku-text-muted); white-space: nowrap; }
+
+/* Таблица баллов раунда */
+.sx-score { display: grid; gap: var(--ku-space-3xs); }
+.sx-score__row {
+  display: flex; align-items: baseline; gap: var(--ku-space-2xs);
+  font: 400 0.9rem/1.4 var(--ku-font-body);
+}
+.sx-score__row .dots {
+  flex: 1 1 auto;
+  border-bottom: 1px dotted var(--ku-border);
+  translate: 0 -0.2em;
+}
+.sx-score__row b { font-weight: 700; white-space: nowrap; }
+.sx-score__total { font-weight: 700; color: var(--ku-brand-strong); }
+
+/* ══ 14. РЕЖИМЫ: карточки-хабы с замками ═══════════════════════════════ */
+.sx-modes { display: grid; gap: var(--ku-space-2xs); }
+.sx-mode {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ku-space-s);
+  width: 100%;
+  padding: var(--ku-space-s);
+  text-align: left;
+  background: var(--ku-card);
+  border: var(--ku-border-w-2) solid var(--ku-border);
+  border-radius: var(--ku-radius-l);
+  cursor: pointer;
+  transition: transform var(--ku-dur-fast) var(--ku-ease-spring),
+              border-color var(--ku-dur-fast) var(--ku-ease);
+}
+.sx-mode:hover { transform: translateY(-2px); border-color: var(--ku-brand); }
+.sx-mode__num {
+  display: grid; place-items: center;
+  width: 2.5rem; height: 2.5rem;
+  border-radius: 50%;
+  font: 700 1rem/1 var(--ku-font-display);
+  color: var(--ku-brand-on);
+  background: var(--ku-grad-brand);
+}
+.sx-mode__body h3 { font: 700 1rem/1.25 var(--ku-font-display); margin: 0; }
+.sx-mode__body p  { font: 400 0.82rem/1.35 var(--ku-font-body);
+  color: var(--ku-text-soft); margin: 0.15em 0 0; }
+.sx-mode.locked { opacity: 0.55; cursor: not-allowed; border-style: dashed; }
+.sx-mode.locked:hover { transform: none; border-color: var(--ku-border); }
+.sx-mode.done { border-color: var(--ku-success); }
+.sx-mode.done .sx-mode__num { background: var(--ku-success); }
+
+/* ══ 15. МЕЛОЧИ ════════════════════════════════════════════════════════ */
+/* Кнопка звука. Компактная, чтобы полоса статуса не переносилась на вторую
+   строку — на телефоне каждые 34px высоты поля на счету. */
+.sx-mute {
+  margin-left: auto;
+  padding: 0.2em 0.5em;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+/* Сравнение двух этикеток (модуль 3, экран 1) */
+.sx-compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--ku-space-s);
+}
+.sx-compare figure { margin: 0; display: grid; gap: var(--ku-space-3xs); justify-items: center; }
+.sx-compare img { display: block; width: 100%; height: auto; border-radius: var(--ku-radius-m);
+  box-shadow: var(--ku-shadow-s); }
+.sx-compare figcaption { font: 700 0.9rem/1.2 var(--ku-font-display); text-transform: uppercase; }
+/* Плашка-«цвет одинаковый» */
+.sx-swatch-pair { display: flex; gap: var(--ku-space-3xs); justify-content: center; }
+.sx-swatch-pair span {
+  width: 2.5rem; height: 1.5rem; border-radius: var(--ku-radius-s);
+  border: var(--ku-border-w) solid var(--ku-border);
+}
+
+/* Заглушка ассета — видно, что это не финал */
+.sx-ph {
+  position: relative;
+  outline: 2px dashed var(--ku-warning);
+  outline-offset: -4px;
+}
+.sx-ph::after {
+  content: "ЗАГЛУШКА";
+  position: absolute; top: 0.25rem; left: 0.25rem;
+  padding: 0.1rem 0.35rem;
+  font: 700 0.55rem/1.3 var(--ku-font-body);
+  letter-spacing: 0.06em;
+  color: #3C2614;
+  background: var(--ku-warning);
+  border-radius: var(--ku-radius-s);
+}

@@ -1,0 +1,31 @@
+KU · Design System — уведомление о сторонних материалах
+=========================================================
+
+ШРИФТЫ
+------
+- Flame (fonts/Flame-Regular.otf, fonts/Flame-Bold.otf)
+  ПРОПРИЕТАРНЫЙ фирменный шрифт бренда. Включён для ВНУТРЕННЕГО использования
+  внутри компании. НЕ распространять за пределы организации, не публиковать в
+  открытых репозиториях. При открытии кода наружу — удалить эти файлы; в
+  --ku-font-display уже прописан опенсорс-фолбэк "Golos Text".
+
+- Golos Text (fonts/golos-text-*.woff2)
+  SIL Open Font License 1.1 — https://openfontlicense.org
+
+- Montserrat (fonts/montserrat-*.woff2)
+  SIL Open Font License 1.1 — https://openfontlicense.org
+
+ИКОНКИ
+------
+- Lucide (icons/*.svg) — ISC License. https://lucide.dev
+  Copyright (c) Lucide Contributors.
+
+БРЕНД-АССЕТЫ
+------------
+- Логотип Burger King (assets/bk_logo_vector.svg) — ПРОПРИЕТАРНЫЙ товарный
+  знак. Только для внутреннего использования. Не распространять за пределы
+  организации и не публиковать в открытых репозиториях.
+
+КОД
+---
+Код дизайн-системы — внутренний (UNLICENSED). Использование внутри компании.
