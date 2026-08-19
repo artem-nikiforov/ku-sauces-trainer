@@ -77,6 +77,28 @@
       c1: "#84549C", c2: "#9C8454", group: "violet", shape: "rect" },
   ];
 
+  /* Короткая подпись для наклейки на ячейке стеллажа. Полное название всё
+     равно читается только на самой этикетке — ячейка лишь ориентир, и она
+     может лгать (внутри бывает другой соус). */
+  const SHORT = {
+    "ketchup": "Кетчуп",
+    "barbecue": "Барбекю",
+    "thousand-islands": "1000 островов",
+    "syrny": "Сырный",
+    "mustard": "Горчичный",
+    "kislo-sladkiy": "Кисло-сладкий",
+    "xxl-4-cheese": "XXL 4 сыра",
+    "xxl-chili-cheese": "XXL Чили Чиз",
+    "curry": "Карри",
+    "parmesan": "Пармезан",
+    "spicy": "Острый",
+    "grill": "Гриль",
+    "smetana-luk": "Сметана-лук",
+    "caesar": "Цезарь",
+    "garlic": "Чесночный",
+  };
+  window.SAUCES.forEach(function (s) { s.short = SHORT[s.slug] || s.name; });
+
   window.SAUCE_GROUPS = {
     red:    "Красные — их путают чаще всего",
     yellow: "Жёлто-оранжевые",

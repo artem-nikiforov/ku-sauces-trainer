@@ -5,8 +5,9 @@
 
   Собран по ku-design-system: токены и компоненты — из css/kuds.css,
   SCORM 1.2 (прогресс, переменные, завершение по кнопке) — js/ku-scorm.js.
-  Курсовое: css/course.css (стеллаж, корзинки, пакет, крупный план),
+  Курсовое: css/course.css (фон зала, стеллаж, ячейки, пакет, крупный план),
   js/sauces.js (каталог соусов — единственный источник правды),
+  js/scenes.js (иллюстрации: пакет, закуски, эмоции, гости, звёзды, фон),
   js/trainer.js (три режима на одном движке раунда + гейты).
 
   ТАЧ-FIRST: проходят с планшета и личного телефона. Ни одного действия
@@ -51,47 +52,8 @@
   <symbol id="i-heart-hand" viewBox="0 0 24 24"><path d="M11 14h2a2 2 0 0 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 16"/><path d="m14.45 13.39 5.05-4.694C20.196 8 21 6.85 21 5.75a2.75 2.75 0 0 0-4.797-1.837.276.276 0 0 1-.406 0A2.75 2.75 0 0 0 11 5.75c0 1.2.802 2.248 1.5 2.946L16 11.95"/><path d="m2 15 6 6"/><path d="m7 20 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a1 1 0 0 0-2.75-2.91"/></symbol>
 </defs></svg>
 
-<!-- ═══════════════════════════════════════════════════════════════════════
-  ГРАФИКА КУРСА, нарисованная SVG (см. assets/ASSETS.md § 3).
-  Блюда, коробка с заказом и эмоции гостя — плоские иллюстрации на токенах,
-  заказывать растр не нужно. Шаблоны лежат тут скрытыми, JS их клонирует.
-═══════════════════════════════════════════════════════════════════════ -->
-<div hidden>
-  <template id="scene-guest-upset">
-    <svg viewBox="0 0 200 200" role="img" aria-label="Расстроенный гость">
-      <rect width="200" height="200" rx="18" fill="#F5EBDC"/>
-      <circle cx="100" cy="78" r="42" fill="#F0C9A4"/>
-      <path d="M58 62a42 42 0 0 1 84 0z" fill="#502314"/>
-      <path d="M76 72c4-4 10-4 14 0M110 72c4-4 10-4 14 0" stroke="#502314" stroke-width="5" fill="none" stroke-linecap="round"/>
-      <circle cx="84" cy="84" r="5" fill="#502314"/><circle cx="116" cy="84" r="5" fill="#502314"/>
-      <path d="M84 108c8-6 24-6 32 0" stroke="#502314" stroke-width="5" fill="none" stroke-linecap="round"/>
-      <path d="M52 200c0-30 22-52 48-52s48 22 48 52z" fill="#D62300"/>
-      <g><rect x="122" y="138" width="46" height="54" rx="6" fill="#D62300"/>
-        <rect x="128" y="120" width="7" height="26" rx="3" fill="#F5C64B"/>
-        <rect x="140" y="112" width="7" height="34" rx="3" fill="#FFD76B"/>
-        <rect x="152" y="118" width="7" height="28" rx="3" fill="#F5C64B"/></g>
-      <g><rect x="34" y="152" width="40" height="34" rx="7" fill="#B0392A"/>
-        <rect x="40" y="158" width="28" height="22" rx="4" fill="#EE5A50"/></g>
-    </svg>
-  </template>
-
-  <template id="scene-guest-happy">
-    <svg viewBox="0 0 200 200" role="img" aria-label="Довольный гость">
-      <rect width="200" height="200" rx="18" fill="#F5EBDC"/>
-      <circle cx="100" cy="78" r="42" fill="#F0C9A4"/>
-      <path d="M58 62a42 42 0 0 1 84 0z" fill="#502314"/>
-      <path d="M76 78c4 3 10 3 14 0M110 78c4 3 10 3 14 0" stroke="#502314" stroke-width="5" fill="none" stroke-linecap="round"/>
-      <path d="M80 100c6 10 34 10 40 0" stroke="#502314" stroke-width="6" fill="none" stroke-linecap="round"/>
-      <path d="M52 200c0-30 22-52 48-52s48 22 48 52z" fill="#FF8732"/>
-      <g><rect x="122" y="138" width="46" height="54" rx="6" fill="#D62300"/>
-        <rect x="128" y="120" width="7" height="26" rx="3" fill="#F5C64B"/>
-        <rect x="140" y="112" width="7" height="34" rx="3" fill="#FFD76B"/>
-        <rect x="152" y="118" width="7" height="28" rx="3" fill="#F5C64B"/></g>
-      <g><rect x="34" y="152" width="40" height="34" rx="7" fill="#0C6C24"/>
-        <rect x="40" y="158" width="28" height="22" rx="4" fill="#5CB531"/></g>
-    </svg>
-  </template>
-</div>
+<!-- Вся графика курса (пакет, закуски, эмоции, гости, звёзды, фон зала)
+     рисуется в js/scenes.js. Там же промты на замену рисунков фото. -->
 
 <!-- ═══ ШАПКА С ПРОГРЕССОМ ═══ -->
 <header class="ku-topbar">
@@ -196,8 +158,10 @@
       <div class="ku-space m"></div>
 
       <div class="ku-prose ku-reveal">
-        <p>Сейчас ты будешь не сотрудником, а гостем. Закажи себе то, что реально
-          любишь — а мы посмотрим, что получится.</p>
+        <p>Представь: ты выходишь после тяжёлой смены. Едешь домой. Рядом с домом
+          есть ресторан Burger King. В пути ты решил заказать себе закуску и соус,
+          чтобы забрать заказ и дома, в тихой и спокойной обстановке, насладиться
+          любимой закуской.</p>
       </div>
       <div class="ku-space m"></div>
 
@@ -210,33 +174,15 @@
           <!-- data-dish-acc — винительный падеж: «ты заказал наггетсы / картошку фри» -->
           <button type="button" class="sx-pick__btn" data-dish="nuggets"
                   data-dish-name="Наггетсы" data-dish-acc="наггетсы">
-            <svg viewBox="0 0 64 64" aria-hidden="true">
-              <path d="M14 34c-4-8 2-16 10-16 3-6 14-6 17 0 9 0 14 8 10 16z" fill="#E8A33C"/>
-              <path d="M12 34h40c0 12-9 20-20 20s-20-8-20-20z" fill="#D68A28"/>
-              <circle cx="24" cy="40" r="2.4" fill="#B06E17"/><circle cx="34" cy="45" r="2.4" fill="#B06E17"/>
-              <circle cx="42" cy="38" r="2.4" fill="#B06E17"/>
-            </svg>
-            Наггетсы
+            <span data-dish-art></span><span class="sx-pick__label">Наггетсы</span>
           </button>
           <button type="button" class="sx-pick__btn" data-dish="fries"
                   data-dish-name="Картошка фри" data-dish-acc="картошку фри">
-            <svg viewBox="0 0 64 64" aria-hidden="true">
-              <rect x="20" y="10" width="7" height="30" rx="3" fill="#FFD76B"/>
-              <rect x="29" y="4" width="7" height="36" rx="3" fill="#F5C64B"/>
-              <rect x="38" y="12" width="7" height="28" rx="3" fill="#FFD76B"/>
-              <path d="M16 30h32l-4 26H20z" fill="#D62300"/>
-              <rect x="20" y="36" width="24" height="8" rx="3" fill="#F5EBDC"/>
-            </svg>
-            Картошка фри
+            <span data-dish-art></span><span class="sx-pick__label">Картошка фри</span>
           </button>
           <button type="button" class="sx-pick__btn" data-dish="wings"
                   data-dish-name="Крылышки" data-dish-acc="крылышки">
-            <svg viewBox="0 0 64 64" aria-hidden="true">
-              <path d="M18 44c-6-6-4-18 6-22s20 0 22 10-6 18-14 18z" fill="#C05A22"/>
-              <path d="M24 46c-4-4-3-12 4-15s14 0 15 7-4 12-9 12z" fill="#E08040"/>
-              <rect x="14" y="44" width="12" height="6" rx="3" fill="#F5EBDC" transform="rotate(-25 20 47)"/>
-            </svg>
-            Крылышки
+            <span data-dish-art></span><span class="sx-pick__label">Крылышки</span>
           </button>
         </div>
       </div>
@@ -263,28 +209,20 @@
       <!-- ── Шаг 4: заказ приехал ───────────────────────────────────────── -->
       <div class="ku-exercise ku-reveal" id="m1-step-box" hidden>
         <div class="ku-exercise__label">Шаг 4. Заказ приехал</div>
-        <p class="ku-small ku-soft">Ты приехал домой. Красивая коробка, внутри — то,
+        <p class="ku-small ku-soft">Ты приехал домой. Фирменный пакет, внутри — то,
           чего ты ждал весь день. Открывай.</p>
         <div class="ku-space s"></div>
-        <div class="sx-box" id="m1-box">
-          <div class="sx-box__art">
-            <svg viewBox="0 0 320 220" role="img" aria-label="Коробка с заказом">
-              <path class="sx-box__lid" d="M40 96h240l-18-44a8 8 0 0 0-7-5H65a8 8 0 0 0-7 5z" fill="#B0392A"/>
-              <path class="sx-box__inside" d="M56 96h208v18H56z" fill="#3C2614"/>
-              <path d="M48 100h224l-14 108a10 10 0 0 1-10 9H72a10 10 0 0 1-10-9z" fill="#D62300"/>
-              <path d="M110 132h100v14h-100z" fill="#F5EBDC" opacity="0.9"/>
-              <g class="sx-box__inside">
-                <rect x="120" y="106" width="12" height="30" rx="5" fill="#FFD76B"/>
-                <rect x="136" y="100" width="12" height="36" rx="5" fill="#F5C64B"/>
-                <rect x="152" y="104" width="12" height="32" rx="5" fill="#FFD76B"/>
-              </g>
-            </svg>
-            <div class="sx-box__sauce" id="m1-box-sauce"></div>
+        <!-- Заказы на вынос выдаются в бумажном пакете, а не в коробке.
+             Рисунок пакета и закуски внутри — js/scenes.js -->
+        <div class="sx-bagscene" id="m1-bag">
+          <div class="sx-bagscene__art">
+            <div id="m1-bag-art"></div>
+            <div class="sx-bagscene__sauce" id="m1-bag-sauce"></div>
           </div>
-          <button type="button" class="ku-btn primary" id="m1-open-box">
-            <svg class="ku-ico"><use href="#i-bag"/></svg> Открыть коробку
+          <button type="button" class="ku-btn primary" id="m1-open-bag">
+            <svg class="ku-ico"><use href="#i-bag"/></svg> Открыть пакет
           </button>
-          <p class="ku-small" id="m1-box-caption" style="text-align:center"></p>
+          <p class="ku-small" id="m1-bag-caption" style="text-align:center"></p>
         </div>
       </div>
 
@@ -293,12 +231,19 @@
         <div class="ku-exercise__label">Шаг 5. Что ты сейчас чувствуешь?</div>
         <p class="ku-small ku-soft">Нажми на ту эмоцию, которую испытал бы в этой ситуации.</p>
         <div class="ku-space s"></div>
-        <div class="sx-pick">
-          <button type="button" class="sx-pick__btn" data-emotion="Злость">Злость</button>
-          <button type="button" class="sx-pick__btn" data-emotion="Разочарование">Разочарование</button>
-          <button type="button" class="sx-pick__btn" data-emotion="Грусть">Грусть</button>
-          <button type="button" class="sx-pick__btn" data-emotion="Бессилие">Бессилие</button>
-          <button type="button" class="sx-pick__btn" data-emotion="Испорченный вечер">Испорченный вечер</button>
+        <!-- Иллюстрации человечков рисует js/scenes.js. Подпись остаётся:
+             «Бессилие» и «Испорченный вечер» одной картинкой не передать. -->
+        <div class="sx-pick sx-emotions">
+          <button type="button" class="sx-pick__btn" data-emotion="Злость">
+            <span data-emotion-art></span><span class="sx-pick__label">Злость</span></button>
+          <button type="button" class="sx-pick__btn" data-emotion="Разочарование">
+            <span data-emotion-art></span><span class="sx-pick__label">Разочарование</span></button>
+          <button type="button" class="sx-pick__btn" data-emotion="Грусть">
+            <span data-emotion-art></span><span class="sx-pick__label">Грусть</span></button>
+          <button type="button" class="sx-pick__btn" data-emotion="Бессилие">
+            <span data-emotion-art></span><span class="sx-pick__label">Бессилие</span></button>
+          <button type="button" class="sx-pick__btn" data-emotion="Испорченный вечер">
+            <span data-emotion-art></span><span class="sx-pick__label">Испорченный вечер</span></button>
         </div>
       </div>
 
@@ -453,17 +398,19 @@
 
       <!-- ── Экран 1: визуальное сравнение ──────────────────────────────── -->
       <div class="ku-exercise ku-reveal" data-ku-id="m3-compare" data-quiz-group="fb-m3-compare">
-        <div class="ku-exercise__label">Экран 1. Найди отличие</div>
+        <div class="ku-exercise__label">Найди отличие</div>
         <p class="ku-small ku-soft">Вот две этикетки крупным планом. Чем они отличаются
           визуально?</p>
         <div class="ku-space s"></div>
         <div class="sx-compare">
           <figure>
-            <img src="assets/sauces/ketchup.webp" alt="Этикетка: Томатный кетчуп">
+            <span class="sx-slot"><img src="assets/sauces/ketchup.webp"
+              alt="Этикетка: Томатный кетчуп"></span>
             <figcaption>Кетчуп</figcaption>
           </figure>
           <figure>
-            <img src="assets/sauces/barbecue.webp" alt="Этикетка: Барбекю">
+            <span class="sx-slot"><img src="assets/sauces/barbecue.webp"
+              alt="Этикетка: Барбекю"></span>
             <figcaption>Барбекю</figcaption>
           </figure>
         </div>
@@ -472,12 +419,12 @@
           <span style="background:#D6231B"></span>
           <span style="background:#B0392A"></span>
         </div>
-        <p class="ku-caption" style="text-align:center">Красно-коричневый фон — и там, и там</p>
+        <p class="ku-caption" style="text-align:center">Красно-коричневый цвет — и там, и там</p>
         <div class="ku-space s"></div>
         <div class="ku-quiz-q">
           <div class="ku-quiz-q__text">Что реально отличает эти два соуса?</div>
           <div class="ku-choices">
-            <button class="ku-choice" data-correct="0"><span class="ku-choice__marker"></span> Цвет фона</button>
+            <button class="ku-choice" data-correct="0"><span class="ku-choice__marker"></span> Цвет этикетки</button>
             <button class="ku-choice" data-correct="0"><span class="ku-choice__marker"></span> Форма упаковки</button>
             <button class="ku-choice" data-correct="1"><span class="ku-choice__marker"><svg class="ku-ico s"><use href="#i-check"/></svg></span> Название на этикетке</button>
           </div>
@@ -486,7 +433,9 @@
       </div>
       <div class="ku-space m"></div>
 
-      <div class="ku-callout ku-reveal">
+      <!-- Появляется только после верного ответа выше: это ИТОГ рассуждения,
+           а не подсказка перед ним. Показывает js/trainer.js -->
+      <div class="ku-callout ku-reveal" id="m3-halfsecond" hidden>
         <span class="ku-callout__icon"><svg class="ku-ico l"><use href="#i-zap"/></svg></span>
         <div><div class="ku-callout__title">0,5 секунды на слово</div>
           <p>Цвет одинаковый — и именно он вводит тебя в заблуждение. А вот названия
@@ -497,10 +446,9 @@
 
       <!-- ── Экран 2: интерактивная карта соусов ────────────────────────── -->
       <div class="ku-exercise ku-reveal" data-ku-id="m3-find">
-        <div class="ku-exercise__label">Экран 2. Карта соусов</div>
+        <div class="ku-exercise__label">Виды соусов</div>
         <p class="ku-small ku-soft">Все 15 соусов на одном экране. Нажми на любой —
-          этикетка увеличится, а название выделится жирным. На компьютере хватит
-          навести курсор.</p>
+          этикетка откроется на весь экран, и название можно спокойно прочитать.</p>
         <div class="ku-space s"></div>
         <div class="sx-map" id="m3-map"></div>
         <div class="ku-space s"></div>
@@ -514,7 +462,9 @@
           <div class="ku-callout warning">
             <span class="ku-callout__icon"><svg class="ku-ico l"><use href="#i-target"/></svg></span>
             <div><div class="ku-callout__title">Найди соус «Тысяча островов»</div>
-              <p>Время пошло. Нажми на него в карте выше.</p></div>
+              <p>Время пошло. Этикетки выше размыты — видны только цвета.
+                 Нажимай на соус, чтобы открыть этикетку и прочитать название,
+                 затем жми «Выбрать».</p></div>
           </div>
         </div>
         <div class="ku-feedback" id="fb-m3-find"></div>
@@ -540,25 +490,23 @@
       <div class="ku-space s"></div>
       <h2 class="ku-h1">Тренажёр</h2>
       <div class="ku-space s"></div>
-      <p class="ku-lead">Слева — заказ гостя. Наверху — стеллаж: в корзинках видны
-        только цветные уголки этикеток, как в жизни. Внизу — пакет.</p>
+      <p class="ku-lead">Сейчас ты потренируешься упаковывать соусы в заказ в формате
+        игры. В игре будет 3 режима: тренировочный, работа над ошибками и финальный
+        экзамен.</p>
+      <div class="ku-space s"></div>
+      <div class="ku-prose ku-reveal">
+        <p>Перед тобой будет рабочая зона. <b>Слева</b> — соус, который заказал Гость.
+          <b>По центру</b> — стеллаж с ячейками: ячейки подписаны, и ты видишь цвета
+          соусов. <b>Внизу</b> — пакет, в который нужно положить соус.</p>
+        <p>Твоя задача — посмотреть на заказ Гостя и положить правильный соус. В игре
+          ты можешь сразу положить соус в заказ или приблизить его, чтобы прочитать
+          этикетку. Выбор за тобой.</p>
+      </div>
       <div class="ku-space m"></div>
 
-      <div class="ku-callout ku-reveal">
-        <span class="ku-callout__icon"><svg class="ku-ico l"><use href="#i-checks"/></svg></span>
-        <div>
-          <div class="ku-callout__title">Как считаются баллы</div>
-          <p><b>5</b> — положил верный соус, прочитав его этикетку крупным планом.<br>
-             <b>1</b> — положил верный соус, не читая (просто повезло по цвету).<br>
-             <b>0</b> — ошибка.<br>
-             <b>+3</b> — поймал подмену: уголок корзинки был «твой», а внутри лежал
-                       другой соус — и ты заметил это, прочитав этикетку.<br>
-             <b>+1</b> — за каждые 5 верных заказов подряд.</p>
-          <p class="ku-small ku-soft">Заглядывать в корзинки можно сколько нужно —
-             это бесплатно. Баллы зависят только от того, прочитал ли ты этикетку
-             того соуса, который в итоге положил в пакет.</p>
-        </div>
-      </div>
+      <!-- Статичное превью рабочей зоны: человек видит будущую игру, а не
+           представляет её «в голове». Рендерит js/trainer.js -->
+      <div class="sx-preview ku-reveal" id="sx-preview" aria-hidden="true"></div>
       <div class="ku-space m"></div>
 
       <!-- ── Хаб режимов ────────────────────────────────────────────────── -->
@@ -669,17 +617,6 @@
         </div>
         <div class="ku-feedback" id="fb-m5"></div>
       </div>
-      <div class="ku-space m"></div>
-
-      <div class="ku-exercise ku-reveal">
-        <div class="ku-exercise__label">Одна фраза для себя</div>
-        <p class="ku-small ku-soft">Что ты скажешь себе в следующий пик, когда рука
-          сама потянется за соусом по цвету? Ответ увидит наставник в сводке.</p>
-        <div class="ku-space s"></div>
-        <textarea class="ku-input" rows="2" data-ku-var="sx-fraza"
-          data-ku-label="Фраза-напоминание сотрудника"
-          placeholder="Например: «Поверни и прочитай»"></textarea>
-      </div>
 
       <div class="next-row" style="margin-top:var(--ku-space-l);display:flex;justify-content:center">
         <button class="ku-btn primary l" onclick="SX.go('ch6')">К финальному тесту <svg class="ku-ico arrow"><use href="#i-right"/></svg></button>
@@ -700,8 +637,9 @@
       <div class="ku-space s"></div>
       <h2 class="ku-h1">Финальный тест</h2>
       <div class="ku-space s"></div>
-      <p class="ku-lead">Механика экзамена, 5 заказов. Система сравнит этот результат
-        с твоим первым проходом режима 2 — и покажет, насколько ты вырос.</p>
+      <p class="ku-lead">Собери <b>10 заказов</b>. Этот тест никого не блокирует —
+        он только измеряет: сколько соусов ты положил не читая, сколько собрал без
+        ошибок и сколько времени уходит на один соус.</p>
       <div class="ku-space m"></div>
 
       <div class="ku-row center">
@@ -715,15 +653,6 @@
       <div id="sx-play-fin" hidden></div>
       <div id="sx-result-fin" hidden></div>
 
-      <div class="ku-space m"></div>
-      <div class="ku-exercise ku-reveal">
-        <div class="ku-exercise__label">Рефлексия</div>
-        <p class="ku-small ku-soft">Что изменится в твоей работе с завтрашней смены?</p>
-        <div class="ku-space s"></div>
-        <textarea class="ku-input" rows="3" data-ku-var="sx-refl"
-          data-ku-label="Что сотрудник изменит в работе"
-          placeholder="Напиши своими словами…"></textarea>
-      </div>
 
       <div class="next-row" style="margin-top:var(--ku-space-l);display:flex;justify-content:center">
         <button class="ku-btn primary l" onclick="kuNavigate('finish')">К завершению <svg class="ku-ico arrow"><use href="#i-right"/></svg></button>
@@ -788,11 +717,14 @@
   <input type="hidden" data-ku-var="sx-m3n"   data-ku-label="Экзамен · собрано заказов">
   <input type="hidden" data-ku-var="sx-fa"    data-ku-label="Финальный тест · точность, %">
   <input type="hidden" data-ku-var="sx-fe"    data-ku-label="Финальный тест · ошибок">
+  <input type="hidden" data-ku-var="sx-fb"    data-ku-label="Финальный тест · положено из ячейки не читая">
+  <input type="hidden" data-ku-var="sx-ft"    data-ku-label="Финальный тест · среднее время на соус">
 </div>
 
 <script src="js/kuds.js"></script>
 <script src="js/ku-scorm.js"></script>
 <script src="js/sauces.js"></script>
+<script src="js/scenes.js"></script>
 <script src="js/trainer.js"></script>
 </body>
 </html>

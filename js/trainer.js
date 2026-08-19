@@ -1,29 +1,31 @@
 /* ════════════════════════════════════════════════════════════════════════
    ТРЕНАЖЁР «Работа с соусами» — вся курсовая логика.
 
-   Каталог соусов — js/sauces.js. SCORM (прогресс, переменные, завершение) —
-   js/ku-scorm.js, здесь он только вызывается: KU.vars.set / KU.progress.
+   Каталог соусов — js/sauces.js. Иллюстрации — js/scenes.js.
+   SCORM (прогресс, переменные, завершение) — js/ku-scorm.js, здесь он только
+   вызывается: KU.vars.set / KU.progress.
 
    Все три режима + финальный тест — это ОДИН движок раунда с разными
-   конфигами (см. MODES). Отличаются только: сколько заказов, есть ли таймер,
-   когда показывать результат и перемешиваются ли корзинки.
+   конфигами (см. MODES). Отличаются: сколько заказов, вид часов, когда
+   показывать результат и перемешиваются ли ячейки.
 
-   БАЛЛЫ ЗА РАУНД. Собирают все три числа сценария (5, 1, 3) и сохраняют
-   «макс. 50 при 10 заказах» с проходным 40:
-     5 — положил верный соус, прочитав его этикетку крупным планом;
-     1 — положил верный соус, не читая этикетку (угадал по цвету);
+   ГЛАВНАЯ МЕХАНИКА: этикетка соуса в руке ЗАБЛЮРЕНА. Видны только фирменные
+   цвета — ровно как когда хватаешь упаковку не глядя. Прочитать название
+   можно единственным способом: нажать «Приблизить». Ячейка стеллажа подписана,
+   но подпись НЕ гарантия — внутри может лежать другой соус той же цветовой
+   группы. Поэтому чтение этикетки и есть единственный надёжный путь.
+
+   БАЛЛЫ ЗА РАУНД (показываются ТОЛЬКО в итогах, не заранее — чтобы сначала
+   увидеть, как сотрудник работает привычным способом):
+     5 — положил верный соус, прочитав его этикетку;
+     1 — положил верный соус, не читая (угадал по цвету);
      0 — ошибка;
-   +3 — «поймал подмену»: открыл корзинку, чей уголок соответствовал заказу,
-        а внутри лежал другой соус, прочитал этикетку и всё равно собрал верно.
-   Плюс 1 бонусный балл за каждые 5 верных подряд (система «Стрик»).
+   +3 — «поймал подмену»: ячейка была подписана нужным соусом, а внутри лежал
+        другой, и ты заметил это, прочитав этикетку;
+   +1 — за каждые 5 верных заказов подряд («Стрик»).
 
-   ВАЖНО, почему нет тарифа «минус за то, что заглянул в другую корзинку»:
-   в корзинке виден только ЦВЕТ, а цвет делят до 5 соусов (жёлтая группа), так
-   что добросовестному сотруднику приходится открыть в среднем 2,33 корзинки
-   на заказ. Если брать за это баллы, проходной 40 из 50 становится
-   недостижимым именно для того, кто ведёт себя правильно. Поэтому осмотр
-   корзинок бесплатен — платится только за то, читал ли ты этикетку соуса,
-   который в итоге положил.
+   Почему нет штрафа за то, что заглянул в другую ячейку: сотрудник обязан
+   иметь право проверить, и наказывать за проверку — значит учить обратному.
    ════════════════════════════════════════════════════════════════════════ */
 (function () {
   "use strict";
@@ -45,12 +47,10 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  /* Название соуса всегда в кавычках. Иначе фраза «гость просил Тысяча
-     островов» требует падежа («Тысячу островов»), а склонять 15 названий
-     («Кисло-сладкий», «XXL 4 сыра», «Цезарь») корректно не выйдет. */
+  /* Название соуса всегда в кавычках: иначе «гость просил Тысяча островов»
+     требует падежа, а корректно склонять 15 названий не выйдет. */
   const nm = (sauce) => "«" + esc(sauce.name) + "»";
 
-  // Склонение: «2 ошибки», «5 ошибок»
   function plural(n, one, few, many) {
     const a = Math.abs(n) % 100, b = a % 10;
     if (a > 10 && a < 20) return many;
@@ -58,19 +58,33 @@
     if (b === 1) return one;
     return many;
   }
+  const secs = (ms) => (ms / 1000).toFixed(1).replace(".", ",");
+  /* Обратный отсчёт больше 59 секунд обязан показывать минуты: раньше 70
+     секунд печатались как «0:70». */
+  const mmss = (total) =>
+    Math.floor(total / 60) + ":" + String(total % 60).padStart(2, "0");
+
+  /* Слот этикетки. Фиксированная пропорция + object-fit: contain — поэтому
+     круглые XXL и прямоугольные упаковки выглядят одного размера и сетка
+     не съезжает ни на одном экране. */
+  function slot(sauce, small, blurred, cls) {
+    return '<span class="sx-slot' + (blurred ? " is-blurred" : "") +
+      (sauce.placeholder ? " sx-ph" : "") + (cls ? " " + cls : "") + '">' +
+      '<img src="' + window.sauceImg(sauce, small) + '" alt="' +
+      (blurred ? "" : esc(sauce.name)) + '"></span>';
+  }
 
   /* ══ 1. СОСТОЯНИЕ И ЕГО СОХРАНЕНИЕ ════════════════════════════════════
      Имена переменных короткие и латинские: cmi.suspend_data ограничен
      ~4096 символами, и часть LMS считает байты, а не символы. Человеческие
-     подписи для сводки наставнику лежат в скрытых полях [data-ku-var]
-     в index.html — оттуда их берёт рантайм ДС. */
+     подписи для сводки лежат в скрытых полях [data-ku-var] в index.html. */
 
   const V = {
     dish: "sx-dish", love: "sx-love", hate: "sx-hate",
     emo: "sx-emo", ret: "sx-ret",
     m1: "sx-m1", m2: "sx-m2", m2acc0: "sx-m2a0", m2err0: "sx-m2e0",
     m3rank: "sx-m3r", m3err: "sx-m3e", m3n: "sx-m3n",
-    finAcc: "sx-fa", finErr: "sx-fe",
+    finAcc: "sx-fa", finErr: "sx-fe", finBlind: "sx-fb", finTime: "sx-ft",
   };
 
   function getVar(name, dflt) {
@@ -85,23 +99,21 @@
     return isFinite(n) ? n : dflt;
   };
 
-  /* Рейтинг экзамена хранится по-русски: эта переменная попадает в сводку
-     наставнику, и «gold» там выглядел бы как недоделка. */
   const RANK = { gold: "золото", silver: "серебро", bronze: "бронза" };
   const RANK_ORDER = { "бронза": 1, "серебро": 2, "золото": 3 };
 
   const ST = {
-    get m1()      { return num(V.m1, 0); },
-    get m2()      { return num(V.m2, 0); },
-    get m3rank()  { return getVar(V.m3rank, ""); },
-    get m1pass()  { return this.m1 >= MODES.m1.pass; },
-    get m2pass()  { return this.m2 >= MODES.m2.pass; },
-    get m3pass()  { return this.m3rank === RANK.gold; },
+    get m1()     { return num(V.m1, 0); },
+    get m2()     { return num(V.m2, 0); },
+    get m3rank() { return getVar(V.m3rank, ""); },
+    get m1pass() { return this.m1 >= MODES.m1.pass; },
+    get m2pass() { return this.m2 >= MODES.m2.pass; },
+    get m3pass() { return this.m3rank === RANK.gold; },
   };
 
-  /* ══ 2. ЗВУК: тиканье таймера синтезируется в браузере ════════════════
-     Ноль файлов в пакете. AudioContext создаём только по жесту (нажатию
-     кнопки старта) — иначе автоплей-политика браузера его заглушит. */
+  /* ══ 2. ЗВУК: тиканье синтезируется в браузере ═════════════════════════
+     Ноль файлов в пакете. AudioContext создаём только по жесту (кнопка
+     старта) — иначе автоплей-политика браузера его заглушит. */
 
   const Sound = {
     ctx: null, timer: null, muted: false,
@@ -144,77 +156,101 @@
   /* ══ 3. КОНФИГИ РЕЖИМОВ ═══════════════════════════════════════════════
      feedback: instant — красный/зелёный экран, закрывает человек (режим 1);
                none    — никакой реакции до конца (режим 2, вся его соль);
-               mark    — мгновенная галочка/крест на корзинке (экзамен).
+               mark    — мгновенная галочка/крест в полосе отметок.
+     clock:    stopwatch — секундомер на заказ, ничего не обрывает;
+               countdown — обратный отсчёт, по нулю режим закрывается.
+     trapRate — с какой вероятностью ячейка, подписанная нужным соусом,
+                содержит другой. Это и есть сложность: без подмен подпись
+                ячейки решала бы всё и читать этикетку было бы незачем.
+
      Порог режима 2 — 20 из 25: сценарные «40 баллов» при 5 заказах
-     недостижимы физически (максимум 25), взяты те же 80%, что 40 из 50. */
+     недостижимы (максимум 25), взяты те же 80%, что 40 из 50. */
 
   const MODES = {
     m1: {
       key: "m1", host: "#sx-play", out: "#sx-result",
       orders: 10, max: 50, pass: 40, feedback: "instant",
-      seconds: 0, reshuffle: false, sound: false, mismatch: 1,
+      clock: "stopwatch", reshuffle: false, sound: false, trapRate: 0.35,
       title: "Режим 1 · Тренировка осознанности",
-      hint: "Без времени, с мгновенными подсказками. Читай название на этикетке.",
+      say: "Завтра приду с друзьями!",
     },
     m2: {
       key: "m2", host: "#sx-play", out: "#sx-result",
       orders: 5, max: 25, pass: 20, feedback: "none",
-      seconds: 0, reshuffle: false, sound: true, mismatch: 2,
+      clock: "stopwatch", reshuffle: false, sound: true, trapRate: 0.4,
       title: "Режим 2 · Режим реальной смены",
-      hint: "Заказы идут пачкой. Реакции не будет до самого конца — как в жизни.",
+      say: "Теперь буду заказывать только у вас!",
     },
     m3: {
       key: "m3", host: "#sx-play", out: "#sx-result",
       orders: 15, max: 75, pass: 0, feedback: "mark",
-      seconds: 60, reshuffle: true, sound: true, mismatch: 3,
+      // Было 60 секунд. Действий в раунде много (нажать ячейку, приблизить,
+      // прочитать, положить), поэтому времени добавлено.
+      clock: "countdown", seconds: 70,
+      reshuffle: true, sound: true, trapRate: 0.45,
       title: "Режим 3 · Экзамен",
-      hint: "60 секунд. Соусы меняются местами. Собери как можно больше — без ошибок.",
-      goldMinOrders: 10,   // чтобы «золото» нельзя было взять, собрав 1 заказ
+      goldMinOrders: 10,   // чтобы «золото» нельзя было взять одним заказом
+      say: "Теперь буду заказывать только у вас!",
     },
     fin: {
       key: "fin", host: "#sx-play-fin", out: "#sx-result-fin",
-      orders: 5, max: 25, pass: 0, feedback: "mark",
-      seconds: 30, reshuffle: true, sound: false, mismatch: 2,
+      // 10 заказов. Финал никого не блокирует — он измеряет, а не пускает.
+      orders: 10, max: 50, pass: 0, feedback: "mark",
+      clock: "stopwatch", reshuffle: true, sound: false, trapRate: 0.4,
       title: "Финальный тест",
-      hint: "Механика экзамена, 5 заказов. Показываем, насколько ты вырос.",
+      say: "Теперь буду заказывать только у вас!",
     },
   };
 
   /* ══ 4. ДВИЖОК РАУНДА ═════════════════════════════════════════════════ */
 
   const G = {
-    cfg: null,        // активный конфиг режима
-    bins: [],         // [{show, real, taken}] — 15 корзинок стеллажа
-    orders: [],       // очередь заказов (соусы)
-    i: 0,             // индекс текущего заказа
+    cfg: null,
+    layout: [],       // стабильные позиции ячеек (какой соус ПОДПИСАН где)
+    bins: [],         // [{show, real, taken}] — содержимое на текущий заказ
+    orders: [],
+    i: 0,
     hand: null,       // {binIdx, sauce}
     opened: false,    // прочитал ли этикетку соуса, который сейчас в руке
-    trapSeen: false,  // корзинка «обманула»: уголок по заказу, внутри другое
-    results: [],      // [{target, put, points}]
+    trapSeen: false,  // ячейка «обманула» в этом раунде
+    results: [],
     streak: 0,
     bonus: 0,
     endsAt: 0,
+    orderStart: 0,
     tick: null,
+    streakTimer: null,
     running: false,
   };
 
-  const el = {};   // ссылки на узлы поля, заполняются в buildField()
+  const el = {};
 
-  /* Стеллаж. Каждый соус лежит на полке ровно один раз, но часть корзинок
-     «переставлена»: уголок показывает один соус, а внутри — другой из ТОЙ ЖЕ
-     цветовой группы. Это и есть ловушка сценария («корзинка с кетчупом, а
-     появился сырный»): по цвету не отличишь, спасает только чтение. */
-  function buildBins(swaps) {
-    const bins = shuffled(window.SAUCES).map((s) => ({ show: s, real: s, taken: false }));
-    const byGroup = {};
-    bins.forEach((b, idx) => {
-      (byGroup[b.show.group] = byGroup[b.show.group] || []).push(idx);
-    });
-    const groups = shuffled(Object.keys(byGroup).filter((g) => byGroup[g].length > 1));
-    for (let n = 0; n < swaps && n < groups.length; n++) {
-      const idxs = shuffled(byGroup[groups[n]]);
-      const [a, b] = idxs;
-      [bins[a].real, bins[b].real] = [bins[b].real, bins[a].real];
+  /* Раскладка стеллажа: какой соус ПОДПИСАН в какой ячейке. Стабильна на весь
+     режим (кроме экзамена и финала, где ячейки перемешиваются между заказами). */
+  function buildLayout() { return shuffled(window.SAUCES); }
+
+  /* Содержимое ячеек под текущий заказ. Каждый соус на полке ровно один раз.
+     С вероятностью trapRate ячейка, подписанная нужным соусом, содержит другой
+     из той же цветовой группы — а нужный прячется в ячейке этого «двойника». */
+  function buildBins(target, trapRate) {
+    const bins = G.layout.map((s) => ({ show: s, real: s, taken: false }));
+    const swap = (a, b) => { const t = bins[a].real; bins[a].real = bins[b].real; bins[b].real = t; };
+
+    const home = bins.findIndex((b) => b.show.slug === target.slug);
+    if (home !== -1 && Math.random() < trapRate) {
+      const mates = bins
+        .map((b, i) => ({ b, i }))
+        .filter((x) => x.i !== home && x.b.show.group === target.group);
+      if (mates.length) swap(home, pick(mates).i);
+    }
+
+    // Ещё одна подмена в стороне — чтобы ловушка не читалась как «всегда там же»
+    const groups = {};
+    bins.forEach((b, i) => { (groups[b.show.group] = groups[b.show.group] || []).push(i); });
+    const big = shuffled(Object.keys(groups).filter((g) => groups[g].length > 1));
+    if (big.length) {
+      const idxs = shuffled(groups[big[0]]);
+      if (idxs[0] !== home && idxs[1] !== home) swap(idxs[0], idxs[1]);
     }
     return bins;
   }
@@ -224,7 +260,7 @@
     let prev = null;
     while (out.length < count) {
       const s = pick(window.SAUCES);
-      if (s === prev) continue;          // два одинаковых заказа подряд — скучно
+      if (s === prev) continue;
       out.push(s);
       prev = s;
     }
@@ -233,9 +269,9 @@
 
   /* ── Разметка поля ────────────────────────────────────────────────────── */
 
-  /* Поле рендерится в ДВУХ местах курса (модуль 4 и финальный тест модуля 6),
-     поэтому внутри — никаких id: были бы дубли, и document.querySelector
-     попадал бы в чужое поле. Узлы ищем по data-el в пределах своего host. */
+  /* Поле рендерится в ДВУХ местах курса (модуль 4 и финальный тест), поэтому
+     внутри никаких id: были бы дубли, и querySelector попадал бы в чужое поле.
+     Узлы ищем по data-el в пределах своего host. */
   function buildField(host) {
     host.innerHTML =
       '<div class="sx-field" data-el="field">' +
@@ -252,11 +288,10 @@
         '</div>' +
         '<div class="sx-marks" data-el="marks" aria-live="polite"></div>' +
         '<div class="sx-shelf" data-el="shelf" role="group" ' +
-          'aria-label="Стеллаж с соусами"></div>' +
+          'aria-label="Стеллаж с подписанными ячейками"></div>' +
         '<div class="sx-hand is-empty" data-el="hand"></div>' +
         '<div class="sx-bag" data-el="bag">' +
-          '<span class="sx-bag__label">Пакет для заказа</span>' +
-          '<span class="ku-caption">Перетащи сюда соус или нажми «Положить в пакет»</span>' +
+          '<span class="sx-bag__label">Пакет заказа</span>' +
         '</div>' +
         '<div class="sx-zoom" data-el="zoom" role="dialog" aria-modal="true" ' +
           'aria-label="Этикетка крупным планом"></div>' +
@@ -271,21 +306,21 @@
      "shelf", "hand", "bag", "zoom", "flash", "streak"].forEach((k) => {
       el[k] = $('[data-el="' + k + '"]', host);
     });
-    // Полоса отметок нужна только там, где результат видно сразу
     el.marks.hidden = G.cfg.feedback !== "mark";
     el.bag.addEventListener("click", () => { if (G.hand) commit(); });
   }
 
-  /* Стеллаж собирается ОДИН раз на раунд (и заново при перемешивании).
-     Дальше только правим классы: пересборка innerHTML на каждое действие
+  /* Стеллаж собирается один раз на раунд (и заново при перемешивании).
+     Дальше правим только классы: пересборка innerHTML на каждое действие
      теряла бы фокус клавиатуры и рвала ссылки на узлы. */
   function renderShelf() {
     el.shelf.innerHTML = G.bins.map((b, idx) =>
       '<button type="button" class="sx-bin' +
         (b.show.shape === "round" ? " is-round" : "") +
         '" data-bin="' + idx + '" style="--c1:' + b.show.c1 + ';--c2:' + b.show.c2 + '"' +
-        ' aria-label="Корзинка ' + (idx + 1) + '">' +
-        '<span class="sx-bin__corner"></span><span class="sx-bin__lip"></span>' +
+        ' aria-label="Ячейка: ' + esc(b.show.short) + '">' +
+        '<span class="sx-bin__corner"></span>' +
+        '<span class="sx-bin__tag">' + esc(b.show.short) + '</span>' +
       '</button>').join("");
     updateShelf();
   }
@@ -300,19 +335,22 @@
   function renderHand() {
     if (!G.hand) {
       el.hand.className = "sx-hand is-empty";
-      el.hand.innerHTML = '<p class="sx-hand__hint">Нажми на корзинку — достанешь соус. ' +
-        'Затем нажми на сам соус, чтобы приблизить этикетку и прочитать название.</p>';
+      el.hand.innerHTML = '<p class="sx-hand__hint">Нажми на ячейку — и выбери: ' +
+        '<b>«Положить в пакет»</b>, чтобы соус сразу ушёл в заказ, ' +
+        '<b>«Приблизить»</b>, чтобы увидеть этикетку, ' +
+        '<b>«Другой соус»</b>, чтобы вернуться к выбору.</p>';
       return;
     }
     const s = G.hand.sauce;
     el.hand.className = "sx-hand";
+    // Этикетка заблюрена: название читается только после «Приблизить».
     el.hand.innerHTML =
-      '<button type="button" class="sx-cup' + (s.placeholder ? " sx-ph" : "") +
-        '" id="sx-cup" aria-label="Соус в руке. Нажми, чтобы приблизить этикетку">' +
-        '<img src="' + window.sauceImg(s, true) + '" alt=""></button>' +
+      '<button type="button" class="sx-cup" data-el="cup" ' +
+        'aria-label="Соус в руке. Нажми, чтобы приблизить этикетку">' +
+        slot(s, true, !G.opened) + '</button>' +
       '<div class="sx-hand__actions">' +
-        '<button type="button" class="ku-btn soft s" data-act="zoom">Приблизить этикетку</button>' +
         '<button type="button" class="ku-btn primary s" data-act="put">Положить в пакет</button>' +
+        '<button type="button" class="ku-btn soft s" data-act="zoom">Приблизить</button>' +
         '<button type="button" class="ku-btn ghost s" data-act="other">Другой соус</button>' +
       '</div>';
 
@@ -322,31 +360,29 @@
       else if (a === "put") commit();
       else returnToShelf();
     }));
-    bindDrag($("#sx-cup", el.hand));
+    bindDrag($('[data-el="cup"]', el.hand));
   }
 
   function renderMarks() {
     if (!el.marks || el.marks.hidden) return;
     el.marks.innerHTML = G.results.map((r, i) =>
       '<span class="sx-mark ' + (r.correct ? "correct" : "wrong") +
-        '" title="Заказ ' + (i + 1) + ": " + esc(r.put.name) + '" role="img" ' +
-        'aria-label="Заказ ' + (i + 1) + (r.correct ? ": верно" : ": ошибка") + '">' +
+        '" role="img" aria-label="Заказ ' + (i + 1) +
+        (r.correct ? ": верно" : ": ошибка") + '">' +
         '<svg class="ku-ico s"><use href="#i-' + (r.correct ? "check" : "close") +
         '"/></svg></span>').join("");
   }
 
   function renderStatus() {
-    const done = G.results.length;
     el["mode-name"].textContent = G.cfg.title.split(" · ")[0];
-    el.counter.textContent = "Заказ " + Math.min(done + 1, G.cfg.orders) +
+    el.counter.textContent = "Заказ " + Math.min(G.results.length + 1, G.cfg.orders) +
                              " / " + G.cfg.orders;
     el.score.textContent = totalPoints() + " б.";
     el.target.textContent = G.orders[G.i] ? G.orders[G.i].name : "—";
   }
 
-  /* Бонусы («поймал подмену», стрик) складываются с базой, поэтому теоретически
-     сумма может превысить заявленные «из 50». Показываем и сравниваем с порогом
-     капнутое значение — чтобы «42 из 50» никогда не выглядело как «53 из 50». */
+  /* Бонусы складываются с базой, поэтому сумма могла бы превысить «из 50».
+     Показываем и сравниваем с порогом капнутое значение. */
   const totalPoints = () => Math.min(
     G.results.reduce((sum, r) => sum + r.points, 0) + G.bonus,
     G.cfg ? G.cfg.max : Infinity);
@@ -354,27 +390,33 @@
   /* ── Действия игрока ─────────────────────────────────────────────────── */
 
   function takeFromBin(idx) {
-    if (!G.running || G.hand) return;
+    if (!G.running) return;
     const bin = G.bins[idx];
-    if (!bin || bin.taken) return;
+    if (!bin) return;
+    if (G.hand) {
+      if (G.hand.binIdx === idx) return;
+      // Выбрала не тот соус — можно сразу нажать другую ячейку, без «Другой соус»
+      G.bins[G.hand.binIdx].taken = false;
+      G.opened = false;                 // новый соус — этикетку читать заново
+    }
     G.hand = { binIdx: idx, sauce: bin.real };
-    // Ловушка сработала: уголок корзинки — как раз того соуса, что просит
-    // гость, а внутри лежит другой. Поймать это можно только чтением.
+    // Ловушка сработала: ячейка подписана нужным соусом, а внутри другой.
     if (bin.show.slug === G.orders[G.i].slug && bin.real.slug !== G.orders[G.i].slug) {
       G.trapSeen = true;
     }
     bin.taken = true;
+    closeZoom();
     updateShelf();
     renderHand();
   }
 
-  /* Вернуть соус на полку. Стоит НОЛЬ баллов: осмотр корзинок — это и есть
-     правильное поведение, наказывать за него нельзя (см. шапку файла). */
+  /* Вернуть соус на полку. Стоит НОЛЬ баллов: проверка — правильное
+     поведение, наказывать за неё нельзя. */
   function returnToShelf() {
     if (!G.hand) return;
     G.bins[G.hand.binIdx].taken = false;
     G.hand = null;
-    G.opened = false;          // этикетку следующего соуса надо читать заново
+    G.opened = false;
     closeZoom();
     updateShelf();
     renderHand();
@@ -386,13 +428,12 @@
     const s = G.hand.sauce;
     el.zoom.innerHTML =
       '<div class="sx-zoom__card">' +
-        '<img class="sx-zoom__img' + (s.placeholder ? " sx-ph" : "") +
-          '" src="' + window.sauceImg(s) + '" alt="Этикетка: ' + esc(s.name) + '">' +
+        slot(s, false, false) +
         '<span class="sx-zoom__name">' + esc(s.name) + '</span>' +
         '<span class="sx-zoom__brand">' + esc(s.full) + '</span>' +
         '<div class="sx-zoom__actions">' +
           '<button type="button" class="ku-btn primary s" data-act="put">Положить в пакет</button>' +
-          '<button type="button" class="ku-btn soft s" data-act="other">Выбрать другой соус</button>' +
+          '<button type="button" class="ku-btn soft s" data-act="other">Другой соус</button>' +
           '<button type="button" class="ku-btn ghost s" data-act="close">Назад</button>' +
         '</div>' +
       '</div>';
@@ -400,17 +441,16 @@
       const a = b.dataset.act;
       if (a === "put") { closeZoom(); commit(); }
       else if (a === "other") returnToShelf();
-      else closeZoom();
+      else { closeZoom(); renderHand(); }
     }));
     el.zoom.classList.add("show");
-    // preventScroll обязателен: без него фокус прокручивает страницу и вся
-    // раскладка уезжает под пальцем посреди раунда.
+    // preventScroll обязателен: иначе фокус прокручивает страницу и раскладка
+    // уезжает под пальцем посреди раунда.
     const first = $(".ku-btn", el.zoom);
     if (first) first.focus({ preventScroll: true });
   }
   function closeZoom() { el.zoom.classList.remove("show"); el.zoom.innerHTML = ""; }
 
-  /* Фиксация выбора: соус уехал в пакет. */
   function commit() {
     if (!G.running || !G.hand) return;
     const target = G.orders[G.i];
@@ -419,23 +459,15 @@
     const base = !correct ? 0 : (G.opened ? 5 : 1);
     const trap = correct && G.opened && G.trapSeen ? 3 : 0;
     const points = base + trap;
+    const ms = G.orderStart ? (performance.now() - G.orderStart) : 0;
 
     G.results.push({ target, put, correct, points, trap: !!trap,
-                     opened: G.opened, trapSeen: G.trapSeen });
+                     opened: G.opened, trapSeen: G.trapSeen, ms });
 
-    // Стрик: 5 верных подряд — «ИДЕАЛЬНО!» и бонусный балл
     G.streak = correct ? G.streak + 1 : 0;
-    if (correct && G.streak % 5 === 0) {
-      G.bonus += 1;
-      el.streak.classList.remove("show");
-      void el.streak.offsetWidth;              // перезапуск анимации
-      el.streak.classList.add("show");
-    }
+    if (correct && G.streak % 5 === 0) { G.bonus += 1; showStreak(); }
 
     if (G.cfg.feedback === "mark") {
-      // «Напротив каждого собранного заказа мгновенно появляется зелёная
-      // галочка или красный крест». Отметки живут отдельной полосой, а не на
-      // корзинках: корзинки в экзамене перемешиваются, отметки бы поехали.
       renderMarks();
       if (correct) Sound.ok(); else Sound.fail();
     }
@@ -447,6 +479,25 @@
 
     if (G.cfg.feedback === "instant") showFlash(correct, target, put, points);
     else nextOrder();
+  }
+
+  /* Плашка «ИДЕАЛЬНО!». Класс .show снимаем по animationend, иначе плашка
+     остаётся на экране артефактом. setTimeout — страховка на случай, когда
+     анимации нет вообще (prefers-reduced-motion обнуляет длительности). */
+  function showStreak() {
+    const s = el.streak;
+    if (!s) return;
+    clearTimeout(G.streakTimer);
+    s.classList.remove("show");
+    void s.offsetWidth;
+    s.classList.add("show");
+    const off = () => s.classList.remove("show");
+    s.addEventListener("animationend", off, { once: true });
+    G.streakTimer = setTimeout(off, 2200);
+  }
+  function hideStreak() {
+    clearTimeout(G.streakTimer);
+    if (el.streak) el.streak.classList.remove("show");
   }
 
   /* «Красный экран» / «зелёный экран» режима 1. Закрывает человек кнопкой —
@@ -478,34 +529,46 @@
     G.i++;
     G.opened = false;
     G.trapSeen = false;
+    hideStreak();
     if (G.i >= G.cfg.orders) { finish(); return; }
     if (G.cfg.reshuffle) {
-      // «Соусы в корзинках начинают меняться местами» — перемешиваем МЕЖДУ
+      // «Соусы в ячейках начинают меняться местами» — перемешиваем МЕЖДУ
       // заказами, а не под пальцем: дёргать DOM во время драга нельзя.
-      G.bins = buildBins(G.cfg.mismatch);
-      renderShelf();
-    } else {
-      updateShelf();
+      G.layout = buildLayout();
     }
+    G.bins = buildBins(G.orders[G.i], G.cfg.trapRate);
+    renderShelf();
     renderHand();
     renderStatus();
+    G.orderStart = performance.now();
   }
 
-  /* ── Таймер ──────────────────────────────────────────────────────────── */
+  /* ── Часы ────────────────────────────────────────────────────────────── */
 
-  function startTimer(seconds) {
+  function startClock() {
+    const cfg = G.cfg;
     el.timer.hidden = false;
-    G.endsAt = Date.now() + seconds * 1000;
-    const paint = () => {
-      const left = Math.max(0, Math.ceil((G.endsAt - Date.now()) / 1000));
-      el.timer.textContent = "0:" + String(left).padStart(2, "0");
-      el.timer.classList.toggle("is-hot", left <= 10);
-      if (left <= 0) { stopTimer(); finish(true); }
-    };
-    paint();
-    G.tick = setInterval(paint, 250);
+    if (cfg.clock === "countdown") {
+      G.endsAt = Date.now() + cfg.seconds * 1000;
+      const paint = () => {
+        const left = Math.max(0, Math.ceil((G.endsAt - Date.now()) / 1000));
+        el.timer.textContent = mmss(left);
+        el.timer.classList.toggle("is-hot", left <= 10);
+        if (left <= 0) { stopClock(); finish(true); }
+      };
+      paint();
+      G.tick = setInterval(paint, 250);
+    } else {
+      // Секундомер на заказ: он ничего не обрывает, просто показывает время.
+      const paint = () => {
+        const t = G.orderStart ? (performance.now() - G.orderStart) / 1000 : 0;
+        el.timer.textContent = "⏱ " + t.toFixed(1).replace(".", ",") + " с";
+      };
+      paint();
+      G.tick = setInterval(paint, 100);
+    }
   }
-  function stopTimer() { clearInterval(G.tick); G.tick = null; Sound.tickOff(); }
+  function stopClock() { clearInterval(G.tick); G.tick = null; Sound.tickOff(); }
 
   /* ── Старт и финиш режима ────────────────────────────────────────────── */
 
@@ -520,10 +583,11 @@
     host.hidden = false;
 
     G.cfg = cfg;
-    G.bins = buildBins(cfg.mismatch);
+    G.layout = buildLayout();
     G.orders = buildOrders(cfg.orders);
     G.i = 0; G.hand = null; G.opened = false; G.trapSeen = false;
     G.results = []; G.streak = 0; G.bonus = 0; G.running = true;
+    G.bins = buildBins(G.orders[0], cfg.trapRate);
 
     buildField(host);
     el.shelf.addEventListener("click", (e) => {
@@ -535,8 +599,8 @@
     renderStatus();
 
     if (cfg.sound) {
-      Sound.ensure();                     // жест уже есть — кнопка старта
-      Sound.tickOn();                     // «имитация очереди из гостей»
+      Sound.ensure();                   // жест уже есть — кнопка старта
+      Sound.tickOn();                   // «имитация очереди из гостей»
       const mute = document.createElement("button");
       mute.type = "button";
       mute.className = "ku-btn ghost s sx-mute";
@@ -545,50 +609,132 @@
       mute.addEventListener("click", () => Sound.toggleMute(mute));
       $(".sx-status", host).appendChild(mute);
     }
-    if (cfg.seconds) startTimer(cfg.seconds);
+    G.orderStart = performance.now();
+    startClock();
 
     host.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  function finish(byTimer) {
+  function finish() {
     if (!G.running) return;
     G.running = false;
-    stopTimer();
+    stopClock();
+    hideStreak();
     closeZoom();
 
     const done = G.results.length;
     const correct = G.results.filter((r) => r.correct).length;
-    const errors = done - correct;
-    const points = totalPoints();
-    const acc = done ? Math.round((correct / done) * 100) : 0;
+    const r = {
+      done, correct,
+      errors: done - correct,
+      points: totalPoints(),
+      acc: done ? Math.round((correct / done) * 100) : 0,
+      pct: G.cfg.max ? Math.round((totalPoints() / G.cfg.max) * 100) : 0,
+      blind: G.results.filter((x) => x.correct && !x.opened).length,
+      read: G.results.filter((x) => x.correct && x.opened).length,
+      avgMs: avgCorrectMs(),
+    };
 
     const host = $(G.cfg.host);
     host.hidden = true;
-    host.innerHTML = "";        // не оставляем отыгранное поле висеть в DOM
+    host.innerHTML = "";               // не оставляем отыгранное поле в DOM
     const out = $(G.cfg.out);
     out.hidden = false;
-    out.innerHTML = resultHtml(G.cfg, { done, correct, errors, points, acc, byTimer });
+    out.innerHTML = resultHtml(G.cfg, r);
     bindResultButtons(out);
-    saveModeResult(G.cfg, { done, correct, errors, points, acc });
+    saveModeResult(G.cfg, r);
     applyGates();
     out.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  function avgCorrectMs() {
+    const ok = G.results.filter((x) => x.correct && x.ms > 0);
+    if (!ok.length) return 0;
+    return ok.reduce((s, x) => s + x.ms, 0) / ok.length;
+  }
+
   /* ══ 5. ИТОГИ РЕЖИМОВ ═════════════════════════════════════════════════ */
 
-  function scoreTable(res) {
+  /* Механика подсчёта показывается ЗДЕСЬ, а не во вступлении: сначала мы
+     смотрим, как человек работает привычным способом, и только потом
+     объясняем, почему получилось столько. */
+  function rulesBlock() {
+    const rows = [
+      ["5", "положил верный соус, <b>прочитав его этикетку</b>"],
+      ["1", "положил верный соус, не читая — просто угадал по цвету"],
+      ["0", "ошибка: в заказ ушёл не тот соус"],
+      ["+3", "поймал подмену: ячейка была подписана нужным соусом, а внутри лежал другой"],
+      ["+1", "за каждые 5 верных заказов подряд"],
+    ];
+    return '<div class="sx-rules"><div class="ku-exercise__label">Как считались баллы</div>' +
+      rows.map((x) => '<div class="sx-rules__row"><span class="sx-rules__pts">' +
+        x[0] + '</span><span>' + x[1] + "</span></div>").join("") +
+      "</div>";
+  }
+
+  function scoreTable(res, bonus, total, max) {
     const kinds = [
       ["Прочитал этикетку и положил верно", 5, (r) => r.correct && r.opened],
       ["Положил верно, но не читая", 1, (r) => r.correct && !r.opened],
       ["Ошибка", 0, (r) => !r.correct],
-      ["Поймал подмену в корзинке", 3, (r) => r.trap],
+      ["Поймал подмену в ячейке", 3, (r) => r.trap],
     ];
-    return '<div class="sx-score">' + kinds.map(([label, pts, test]) => {
+    let html = '<div class="sx-score">';
+    kinds.forEach(([label, pts, test]) => {
       const n = res.filter(test).length;
-      if (!n) return "";
-      return '<div class="sx-score__row"><span>' + label + " × " + n +
+      if (!n) return;
+      html += '<div class="sx-score__row"><span>' + label + " × " + n +
         '</span><span class="dots"></span><b>' + (n * pts) + " б.</b></div>";
-    }).join("") + "</div>";
+    });
+    if (bonus) {
+      html += '<div class="sx-score__row"><span>Бонус за серии «Идеально» × ' + bonus +
+        '</span><span class="dots"></span><b>' + bonus + " б.</b></div>";
+    }
+    html += '<div class="sx-score__row is-total"><span>Итого</span>' +
+      '<span class="dots"></span><b>' + total + " из " + max + "</b></div></div>";
+    return html;
+  }
+
+  /* Три цифры, которые просил методист: сколько ушло в пакет прямо из ячейки,
+     сколько — после чтения этикетки, и сколько времени уходит на верный соус. */
+  function countsBlock(r) {
+    return '<div class="ku-grid cols-3">' +
+      stat(r.read, "верно · <b>после чтения</b> этикетки") +
+      stat(r.blind, "верно · <b>прямо из ячейки</b>, не читая") +
+      stat(r.avgMs ? secs(r.avgMs) + " с" : "—", "среднее время на верный соус") +
+      "</div>";
+  }
+
+  /* Оценка гостя. Шкала из брифа задана в баллах (менее 40 / 60–80 / 100), но
+     максимумы режимов разные (50, 25, 75), а «100 баллов» не существует нигде.
+     Поэтому шкала переведена в ПРОЦЕНТЫ от максимума режима — только так она
+     работает во всех четырёх прогонах. Пробелы 40–59 и 81–99 заполнены. */
+  function guestVerdict(pct, cfg) {
+    if (pct >= 100) return { level: 5, stars: 5, mood: "Гость очень доволен", say: cfg.say };
+    if (pct >= 81)  return { level: 4, stars: 4, mood: "Гость доволен" };
+    if (pct >= 60)  return { level: 4, stars: 4, mood: "Гость равнодушен" };
+    if (pct >= 40)  return { level: 2, stars: 2, mood: "Гость расстроен" };
+    return { level: 1, stars: 1, mood: "Гость недоволен" };
+  }
+
+  function guestBlock(cfg, r) {
+    const v = guestVerdict(r.pct, cfg);
+    return '<div class="sx-guest">' +
+      '<div class="sx-guest__art">' + window.SCENES.guest(v.level) + "</div>" +
+      window.SCENES.stars(v.stars, 5) +
+      '<p class="sx-guest__cap">' + esc(v.mood) + " · " + r.pct + "% от максимума</p>" +
+      (v.say ? '<p class="sx-guest__say">' + esc(v.say) + "</p>" : "") +
+      "</div>";
+  }
+
+  const stat = (n, label) =>
+    '<div class="ku-stat"><div class="ku-stat__num">' + n +
+    '</div><div class="ku-stat__label">' + label + "</div></div>";
+
+  function resultHead(title, sub) {
+    return '<div class="ku-center"><span class="ku-eyebrow">' + esc(title) + "</span>" +
+      '<div class="ku-space s"></div><h3 class="ku-h2">' + sub + "</h3></div>" +
+      '<div class="ku-space s"></div>';
   }
 
   function resultHtml(cfg, r) {
@@ -598,27 +744,21 @@
     return resultFin(cfg, r);
   }
 
-  function resultHead(title, sub) {
-    return '<div class="ku-center"><span class="ku-eyebrow">' + esc(title) + "</span>" +
-      '<div class="ku-space s"></div><h3 class="ku-h2">' + sub + "</h3></div>" +
-      '<div class="ku-space s"></div>';
-  }
-
   function resultM1(cfg, r) {
     const passed = r.points >= cfg.pass;
     return resultHead("Итог режима 1",
-        r.points + " " + plural(r.points, "балл", "балла", "баллов") +
-        " из " + cfg.max) +
-      scoreTable(G.results) +
-      (G.bonus ? '<p class="ku-small ku-soft">Бонус за серии по 5 верных подряд: +' +
-        G.bonus + " б.</p>" : "") +
-      '<div class="ku-space s"></div>' +
+        r.points + " " + plural(r.points, "балл", "балла", "баллов") + " из " + cfg.max) +
+      guestBlock(cfg, r) +
+      '<div class="ku-space m"></div>' + countsBlock(r) +
+      '<div class="ku-space m"></div>' + rulesBlock() +
+      '<div class="ku-space s"></div>' + scoreTable(G.results, G.bonus, r.points, cfg.max) +
+      '<div class="ku-space m"></div>' +
       '<div class="ku-feedback show ' + (passed ? "correct" : "incorrect") + '">' +
         (passed
           ? "<strong>Проходной балл взят.</strong> Режим 2 «Режим реальной смены» открыт."
           : "<strong>Проходной балл — " + cfg.pass + ".</strong> Пока " + r.points +
-            ". Пройди режим заново: чем чаще ты приближаешь этикетку перед тем, " +
-            "как положить соус, тем выше балл.") +
+            ". Пройди режим заново: каждый соус, который ты положил не читая, " +
+            "стоит 1 балл вместо 5.") +
       "</div>" +
       '<div class="ku-space m"></div>' +
       '<div class="ku-row center">' +
@@ -643,25 +783,28 @@
           "Обрати внимание</div><p>Ты был уверен, что всё сделал идеально. Но ошибся в " +
           r.errors + " " + plural(r.errors, "заказе", "заказах", "заказах") + " из " +
           r.done + ".<br>Именно так это происходит и в реальной жизни. Ты не замечаешь " +
-          "ошибку, а Гость не получает свой любимый вкус. Будь внимательнее!</p></div></div>" +
-        guestHtml("upset", "Гость, которому достался не тот соус")
+          "ошибку, а Гость не получает свой любимый вкус. Будь внимательнее!</p></div></div>"
       : '<div class="ku-callout success"><div><div class="ku-callout__title">' +
           "Круто!</div><p>Ты справился идеально! Теперь Гости будут довольны заказом " +
-          "и смогут насладиться любимым соусом!</p></div></div>" +
-        guestHtml("happy", "Гость, который получил именно то, что просил");
+          "и смогут насладиться любимым соусом!</p></div></div>";
 
     const passed = r.points >= cfg.pass;
     return resultHead("Чек-лист ошибок · режим 2",
         r.points + " из " + cfg.max + " · точность " + r.acc + "%") +
+      guestBlock(cfg, r) +
+      '<div class="ku-space m"></div>' +
       '<div class="sx-check">' + rows + "</div>" +
       '<div class="ku-space m"></div>' + verdict +
+      '<div class="ku-space m"></div>' + countsBlock(r) +
+      '<div class="ku-space m"></div>' + rulesBlock() +
+      '<div class="ku-space s"></div>' + scoreTable(G.results, G.bonus, r.points, cfg.max) +
       '<div class="ku-space m"></div>' +
       '<div class="ku-feedback show ' + (passed ? "correct" : "incorrect") + '">' +
         (passed
           ? "<strong>Порог взят (" + cfg.pass + " из " + cfg.max +
             ").</strong> Режим 3 «Экзамен» открыт."
           : "<strong>Порог — " + cfg.pass + " из " + cfg.max + ".</strong> Пока " +
-            r.points + ". Режим 3 не откроется, пока не наберёшь порог. Пройди заново.") +
+            r.points + ". Режим 3 не откроется, пока не наберёшь порог.") +
       "</div>" +
       '<div class="ku-space m"></div>' +
       '<div class="ku-row center">' +
@@ -676,8 +819,8 @@
     const texts = {
       gold:   "Ты — мастер внимания! Твои гости всегда будут сыты и довольны.",
       silver: "Хороший результат, но есть куда расти. Перечитай этикетки ещё раз.",
-      bronze: 'Провал. Ты потерял этих гостей навсегда. Рекомендуем вернуться ' +
-              'к Режиму №1 «Тренировка осознанности».',
+      bronze: "Провал. Ты потерял этих гостей навсегда. Рекомендуем вернуться " +
+              "к Режиму №1 «Тренировка осознанности».",
     };
     const gold = rank === "gold";
 
@@ -686,22 +829,24 @@
         (r.errors ? r.errors + " " + plural(r.errors, "ошибка", "ошибки", "ошибок")
                   : "без ошибок")) +
       '<div class="sx-medal ' + rank + '">' +
-        '<div class="sx-medal__disc">' + RANK[rank].toUpperCase() + "</div>" +
-      "</div>" +
+        '<div class="sx-medal__disc">' + RANK[rank].toUpperCase() + "</div></div>" +
       '<div class="ku-space s"></div>' +
       '<p class="ku-lead ku-center">' + texts[rank] + "</p>" +
+      '<div class="ku-space m"></div>' + guestBlock(cfg, r) +
+      '<div class="ku-space m"></div>' + countsBlock(r) +
+      '<div class="ku-space m"></div>' + rulesBlock() +
+      '<div class="ku-space s"></div>' + scoreTable(G.results, G.bonus, r.points, cfg.max) +
       (rank !== "gold" && r.errors === 0
         ? '<p class="ku-small ku-soft ku-center">Ошибок нет, но для «золота» нужно ' +
-          "собрать минимум " + cfg.goldMinOrders + " заказов за 60 секунд — " +
-          "ты собрал " + r.done + ".</p>"
+          "собрать минимум " + cfg.goldMinOrders + " заказов за " + cfg.seconds +
+          " секунд — ты собрал " + r.done + ".</p>"
         : "") +
       '<div class="ku-space m"></div>' +
       '<div class="ku-feedback show ' + (gold ? "correct" : "incorrect") + '">' +
         (gold
           ? "<strong>Экзамен сдан на золото.</strong> Модули 5 и 6 открыты."
           : "<strong>Доступ к дальнейшим разделам открывается только за «золото».</strong> " +
-            "Ноль ошибок и минимум " + cfg.goldMinOrders + " собранных заказов. " +
-            "Если тяжело — вернись к режиму 1 и потренируй чтение этикеток.") +
+            "Ноль ошибок и минимум " + cfg.goldMinOrders + " собранных заказов.") +
       "</div>" +
       '<div class="ku-space m"></div>' +
       '<div class="ku-row center">' +
@@ -717,51 +862,64 @@
     return "bronze";
   }
 
-  /* Финальный тест: сравнение с ПЕРВЫМ результатом режима 2.
-     Экономика взята из модуля 2 и нигде не выдумана заново:
-     120 000 ₽ в месяц / 480 ошибок = 250 ₽ за одну ошибку;
-     смена = 100 заказов с соусами на одного сотрудника. */
-  const RUB_PER_ERROR = 250;
-  const ORDERS_PER_SHIFT = 100;
+  /* Финальный тест: 10 заказов, никого не блокирует. На итоговом экране —
+     три показателя, которые просил методист.
 
+     База для сравнения — ПЕРВАЯ попытка режима 2. Там было 5 заказов, здесь
+     10, поэтому штуки сравнивать нельзя: сравниваем проценты и показываем
+     оба абсолютных числа честно. */
   function resultFin(cfg, r) {
     const base = num(V.m2acc0, null);
-    const grew = base === null ? null : r.acc - base;
-    const errRateBefore = base === null ? null : (100 - base) / 100;
-    const errRateNow = (100 - r.acc) / 100;
-    const saved = errRateBefore === null ? null :
-      Math.max(0, Math.round((errRateBefore - errRateNow) * ORDERS_PER_SHIFT));
-    const rub = saved === null ? null : saved * RUB_PER_ERROR;
+    const baseErr = num(V.m2err0, null);
+    const baseOk = baseErr === null ? null : Math.max(0, MODES.m2.orders - baseErr);
 
-    let body;
+    let compare;
     if (base === null) {
-      body = '<p class="ku-lead">Точность в финальном тесте: <b>' + r.acc + "%</b>.</p>";
-    } else if (grew > 0) {
-      body =
-        '<p class="ku-lead">Твой уровень внимательности вырос на <b>' + grew +
-          " п.п.</b> — с " + base + "% в режиме 2 до " + r.acc + "% сейчас.</p>" +
-        '<div class="ku-space s"></div>' +
-        '<div class="ku-grid cols-3">' +
-          stat(grew + " п.п.", "рост внимательности") +
-          stat(rub.toLocaleString("ru-RU") + " ₽", "сохранено за смену") +
-          stat(saved + "", plural(saved, "гость получил", "гостя получили",
-                                  "гостей получили") + " свой соус") +
-        "</div>" +
-        '<p class="ku-caption">Расчёт от цифр модуля 2: смена — ' + ORDERS_PER_SHIFT +
-          " заказов с соусами, одна ошибка стоит ресторану " + RUB_PER_ERROR + " ₽.</p>";
-    } else if (r.acc === 100) {
-      body = '<p class="ku-lead">Ты собрал всё без ошибок — как и в режиме 2. ' +
-        "Держи планку: <b>100%</b> точности и есть та привычка, ради которой " +
-        "всё это было.</p>";
+      compare = '<p class="ku-lead">Точность в финальном тесте: <b>' + r.acc + "%</b>.</p>";
     } else {
-      body = '<p class="ku-lead">Точность сейчас — <b>' + r.acc + "%</b>, в режиме 2 была " +
-        base + "%. Прогресса пока нет: вернись к «Правилу трёх касаний» и пройди " +
-        "финальный тест ещё раз.</p>";
+      const delta = r.acc - base;
+      compare =
+        '<div class="ku-grid cols-2">' +
+          stat(baseOk + " из " + MODES.m2.orders + " · " + base + "%",
+               "было в начале — первый проход режима 2") +
+          stat(r.correct + " из " + r.done + " · " + r.acc + "%",
+               "сейчас — финальный тест") +
+        "</div>" +
+        '<div class="ku-space s"></div>' +
+        '<p class="ku-lead ku-center">' + (
+          delta > 0
+            ? "Твоя точность выросла на <b>" + delta + " п.п.</b>"
+            : delta === 0
+              ? "Точность держится на прежнем уровне — <b>" + r.acc + "%</b>."
+              : "Точность просела на <b>" + Math.abs(delta) + " п.п.</b> " +
+                "Вернись к «Правилу трёх касаний»."
+        ) + "</p>";
     }
+
+    const blind = r.blind + G.results.filter((x) => !x.correct && !x.opened).length;
+    const blindBlock = blind
+      ? '<div class="ku-callout danger"><span class="ku-callout__icon">' +
+          '<svg class="ku-ico l"><use href="#i-alert"/></svg></span>' +
+          '<div><div class="ku-callout__title">Кажется, ты не усвоил урок</div>' +
+          "<p>Соусов, отправленных в пакет прямо из ячейки, без чтения этикетки: <b>" +
+          blind + "</b>. Нужно читать этикетку, а не сразу класть в пакет соус " +
+          "из ячейки — подпись на ячейке может не совпадать с тем, что внутри.</p></div></div>"
+      : '<div class="ku-callout success"><span class="ku-callout__icon">' +
+          '<svg class="ku-ico l"><use href="#i-check"/></svg></span>' +
+          '<div><div class="ku-callout__title">Урок усвоен</div>' +
+          "<p>Ни одного соуса ты не отправил в пакет не глядя — перед каждым " +
+          "читал этикетку. Это и есть та привычка, ради которой всё было.</p></div></div>";
 
     return resultHead("Финальный тест",
         r.correct + " из " + r.done + " · точность " + r.acc + "%") +
-      body +
+      '<div class="ku-grid cols-3">' +
+        stat(blind, "положено <b>прямо из ячейки</b>, не читая") +
+        stat(r.correct + " из " + r.done, "собрано <b>без ошибок</b>") +
+        stat(r.avgMs ? secs(r.avgMs) + " с" : "—", "среднее время <b>на 1 соус</b>") +
+      "</div>" +
+      '<div class="ku-space m"></div>' + blindBlock +
+      '<div class="ku-space m"></div>' + compare +
+      '<div class="ku-space m"></div>' + guestBlock(cfg, r) +
       '<div class="ku-space m"></div>' +
       '<div class="ku-row center">' +
         '<button type="button" class="ku-btn soft" data-start="fin">Пройти ещё раз</button>' +
@@ -769,32 +927,13 @@
       "</div>";
   }
 
-  const stat = (n, label) =>
-    '<div class="ku-stat"><div class="ku-stat__num">' + n +
-    '</div><div class="ku-stat__label">' + label + "</div></div>";
-
-  /* Гость: сейчас плоская SVG-заглушка (шаблоны в index.html).
-     КАК ПОДКЛЮЧИТЬ НАСТОЯЩИЕ КАРТИНКИ: положить assets/scene/guest-happy.webp
-     и guest-upset.webp (промты — в assets/ASSETS.md) и поставить здесь true.
-     Флаг, а не проба через onerror: иначе курс на каждом показе стучится за
-     несуществующим файлом и сыпет 404 в консоль LMS. */
-  const SCENE_IMAGES = false;
-
-  function guestHtml(kind, caption) {
-    const tpl = $("#scene-guest-" + kind);
-    const art = SCENE_IMAGES
-      ? '<img src="assets/scene/guest-' + kind + '.webp" alt="' + esc(caption) + '">'
-      : (tpl ? tpl.innerHTML : "");
-    return '<div class="sx-guest"><div class="sx-guest__art">' + art + "</div>" +
-      '<p class="sx-guest__cap">' + esc(caption) + "</p></div>";
-  }
-
   function bindResultButtons(root) {
     $$("[data-start]", root).forEach((b) =>
       b.addEventListener("click", () => start(b.dataset.start)));
     $$("[data-back]", root).forEach((b) => b.addEventListener("click", () => {
+      const modes = $("#sx-modes");
       $("#sx-result").hidden = true;
-      $("#sx-modes").scrollIntoView({ behavior: "smooth", block: "start" });
+      if (modes) modes.scrollIntoView({ behavior: "smooth", block: "start" });
     }));
     $$("[data-go]", root).forEach((b) =>
       b.addEventListener("click", () => window.SX.go(b.dataset.go)));
@@ -824,14 +963,16 @@
     } else {
       setVar(V.finAcc, r.acc);
       setVar(V.finErr, r.errors);
+      setVar(V.finBlind, r.blind);
+      setVar(V.finTime, r.avgMs ? secs(r.avgMs) : "—");
       window.KU.progress.markDone("m6-final");
     }
   }
 
   /* ══ 6. DRAG НА POINTER EVENTS ════════════════════════════════════════
-     Один код на мышь, палец и стилус. HTML5 drag-and-drop не годится:
-     на тач-экранах он не работает вообще, а курс проходят с телефона.
-     Короткий тап без смещения = «приблизить этикетку». */
+     Один код на мышь, палец и стилус. HTML5 drag-and-drop не годится: на
+     тач-экранах он не работает, а курс проходят с телефона. Короткий тап без
+     смещения = «приблизить этикетку». */
 
   function bindDrag(cup) {
     if (!cup) return;
@@ -841,7 +982,7 @@
       if (e.button) return;
       active = true; moved = false;
       sx = e.clientX; sy = e.clientY;
-      // В части браузеров бросает NotFoundError, если указатель уже не активен.
+      // Часть браузеров бросает NotFoundError, если указатель уже не активен.
       // Захват — оптимизация (палец может уйти за пределы соуса), не обязателен.
       try { cup.setPointerCapture(e.pointerId); } catch (err) { /* переживём */ }
       cup.classList.add("dragging");
@@ -862,7 +1003,7 @@
       cup.classList.remove("dragging");
       cup.style.transform = "";
       el.bag.classList.remove("drag-over");
-      if (!moved) { openZoom(); return; }        // это был тап, не драг
+      if (!moved) { openZoom(); return; }      // это был тап, не драг
       if (inRect(e, el.bag)) commit();
     };
     cup.addEventListener("pointerup", end);
@@ -873,7 +1014,6 @@
       el.bag.classList.remove("drag-over");
     });
 
-    // Клавиатура: Enter/Space на самом соусе — приблизить этикетку
     cup.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openZoom(); }
     });
@@ -886,8 +1026,9 @@
   }
 
   /* ══ 7. ГЕЙТЫ ═════════════════════════════════════════════════════════
-     Блокировки как в сценарии: режим 2 — только после проходного балла
-     в режиме 1, режим 3 — после режима 2, модули 5–6 — только за «золото». */
+     Блокировки как в сценарии: режим 2 — только после проходного балла в
+     режиме 1, режим 3 — после режима 2, модули 5–6 — только за «золото».
+     Финальный тест не блокирует ничего: он измеряет, а не пускает. */
 
   const GATES = {
     m2: () => ST.m1pass,
@@ -901,9 +1042,8 @@
         " в режиме 2.",
     ch5: "Дальнейшие разделы откроются, когда сдашь экзамен на «золото» " +
          "(ноль ошибок, минимум " + MODES.m3.goldMinOrders + " заказов).",
-    ch6: "Дальнейшие разделы откроются, когда сдашь экзамен на «золото» " +
-         "(ноль ошибок, минимум " + MODES.m3.goldMinOrders + " заказов).",
   };
+  GATE_MSG.ch6 = GATE_MSG.ch5;
 
   function applyGates() {
     $$("[data-mode-card]").forEach((card) => {
@@ -914,16 +1054,13 @@
       const done = { m1: ST.m1pass, m2: ST.m2pass, m3: ST.m3pass }[key];
       card.classList.toggle("done", !!done);
       const badge = $("[data-mode-state]", card);
-      if (badge) {
-        badge.textContent = !open ? "Закрыто" : done ? "Пройден" : "Открыт";
-      }
+      if (badge) badge.textContent = !open ? "Закрыто" : done ? "Пройден" : "Открыт";
     });
     $$("[data-chapter-card]").forEach((card) => {
       const key = card.dataset.chapterCard;
       const open = !GATES[key] || GATES[key]();
       card.classList.toggle("locked", !open);
     });
-    // Сводка прогресса на экране режимов
     const sum = $("#sx-progress-note");
     if (sum) {
       sum.innerHTML =
@@ -946,7 +1083,6 @@
     },
     applyGates,
     MODES,
-    modes: () => MODES,
   };
 
   function alertGate(key) {
@@ -962,6 +1098,17 @@
   const M1 = { dish: null, love: [], hate: [] };
 
   function initModule1() {
+    // Рисунки закусок из scenes.js — в разметке остаются только data-атрибуты
+    $$("[data-dish]").forEach((btn) => {
+      const art = $("[data-dish-art]", btn);
+      if (art) art.innerHTML = window.SCENES.dish(btn.dataset.dish);
+    });
+    // Иллюстрации эмоций: текстом их мало кто читает
+    $$("[data-emotion]").forEach((btn) => {
+      const art = $("[data-emotion-art]", btn);
+      if (art) art.innerHTML = window.SCENES.emotion(btn.dataset.emotion);
+    });
+
     const dishes = $$("[data-dish]");
     dishes.forEach((btn) => btn.addEventListener("click", () => {
       dishes.forEach((b) => b.classList.remove("is-on"));
@@ -976,8 +1123,8 @@
       $("#m1-step-love").scrollIntoView({ behavior: "smooth", block: "start" });
     }));
 
-    const openBtn = $("#m1-open-box");
-    if (openBtn) openBtn.addEventListener("click", openBox);
+    const openBtn = $("#m1-open-bag");
+    if (openBtn) openBtn.addEventListener("click", openBag);
 
     $$("[data-emotion]").forEach((btn) => btn.addEventListener("click", () => {
       $$("[data-emotion]").forEach((b) => b.classList.remove("is-on"));
@@ -997,15 +1144,13 @@
     }));
   }
 
-  // Сетка соусов с ограничением «выбери ровно N»
   function renderChoose(sel, need, onClass, onComplete) {
     const host = $(sel);
     if (!host || host.dataset.built) return;
     host.dataset.built = "1";
     host.innerHTML = window.SAUCES.map((s) =>
-      '<button type="button" class="sx-choose__btn' + (s.placeholder ? " sx-ph" : "") +
-        '" data-slug="' + s.slug + '">' +
-        '<img src="' + window.sauceImg(s, true) + '" alt="">' +
+      '<button type="button" class="sx-choose__btn" data-slug="' + s.slug + '">' +
+        slot(s, true, false) +
         "<figcaption>" + esc(s.name) + "</figcaption></button>").join("");
 
     const counter = $(sel + "-count");
@@ -1029,62 +1174,136 @@
   }
 
   /* «Система специально кладёт тот соус, который сотрудник только что назвал
-     неподходящим» — в этом весь смысл симуляции. */
-  function openBox() {
+     неподходящим» — в этом весь смысл симуляции. Заказ на вынос приезжает
+     в фирменном бумажном пакете, а не в коробке. */
+  function openBag() {
     const wrong = window.sauceBySlug(M1.hate[0] || "ketchup");
     const chosen = $("[data-dish].is-on");
+    const dishKey = chosen ? chosen.dataset.dish : "fries";
     const dishAcc = chosen ? chosen.dataset.dishAcc : "своё блюдо";
-    const box = $("#m1-box");
-    const slot = $("#m1-box-sauce");
-    slot.innerHTML = '<img src="' + window.sauceImg(wrong, true) + '" alt="Соус ' +
-      esc(wrong.name) + '">';
-    box.classList.add("is-open");
-    $("#m1-box-caption").innerHTML =
-      "Ты заказал <b>" + esc(dishAcc) + "</b>. А в коробке лежит <b>" +
+
+    const scene = $("#m1-bag");
+    $("#m1-bag-art").innerHTML = window.SCENES.bag(dishKey);
+    $("#m1-bag-sauce").innerHTML = slot(wrong, true, false);
+    scene.classList.add("is-open");
+    $("#m1-bag-caption").innerHTML =
+      "Ты заказал <b>" + esc(dishAcc) + "</b>. А в пакете лежит <b>" +
       nm(wrong) + "</b> — тот самый соус, который ты только что назвал " +
       "неподходящим.";
     $("#m1-step-emotion").hidden = false;
-    $("#m1-open-box").disabled = true;
+    $("#m1-open-bag").disabled = true;
     setTimeout(() => $("#m1-step-emotion").scrollIntoView({
       behavior: "smooth", block: "start" }), 600);
   }
 
   /* ══ 10. МОДУЛЬ 3 · СЕКРЕТ ЭТИКЕТКИ ══════════════════════════════════ */
 
+  /* Полноэкранный просмотр этикетки. Увеличение на 6% задачу «прочитай
+     название» не решает, поэтому здесь настоящий полный экран. */
+  const LB = { node: null, prevFocus: null };
+
+  function lightbox(sauce, actions) {
+    if (!LB.node) {
+      LB.node = document.createElement("div");
+      LB.node.className = "sx-lightbox";
+      LB.node.setAttribute("role", "dialog");
+      LB.node.setAttribute("aria-modal", "true");
+      document.body.appendChild(LB.node);
+      LB.node.addEventListener("click", (e) => {
+        if (e.target === LB.node) closeLightbox();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && LB.node.classList.contains("show")) closeLightbox();
+      });
+    }
+    LB.prevFocus = document.activeElement;
+    LB.node.innerHTML =
+      '<div class="sx-lightbox__card">' +
+        slot(sauce, false, false) +
+        '<span class="sx-lightbox__name">' + esc(sauce.name) + "</span>" +
+        '<span class="sx-lightbox__brand">' + esc(sauce.full) + "</span>" +
+        '<div class="sx-lightbox__actions">' +
+          actions.map((a, i) => '<button type="button" class="ku-btn ' +
+            (a.style || "soft") + '" data-lb="' + i + '">' + esc(a.label) +
+            "</button>").join("") +
+        "</div>" +
+      "</div>";
+    $$("[data-lb]", LB.node).forEach((b) => b.addEventListener("click", () => {
+      const a = actions[+b.dataset.lb];
+      if (a && a.run) a.run();
+    }));
+    LB.node.classList.add("show");
+    const first = $(".ku-btn", LB.node);
+    if (first) first.focus({ preventScroll: true });
+  }
+
+  function closeLightbox() {
+    if (!LB.node) return;
+    LB.node.classList.remove("show");
+    LB.node.innerHTML = "";
+    if (LB.prevFocus && LB.prevFocus.focus) LB.prevFocus.focus({ preventScroll: true });
+  }
+
+  const FIND = { target: "thousand-islands", t0: 0, on: false };
+
   function initModule3() {
-    // Карта соусов: тап увеличивает и выделяет название жирным.
     const map = $("#m3-map");
     if (map) {
-      map.innerHTML = shuffled(window.SAUCES).map((s) =>
-        '<figure class="sx-map__item' + (s.placeholder ? " sx-ph" : "") +
-          '" tabindex="0" data-slug="' + s.slug + '">' +
-          '<img src="' + window.sauceImg(s, true) + '" alt="">' +
-          "<figcaption>" + esc(s.name) + "</figcaption></figure>").join("");
-
-      const open = (fig) => {
-        $$(".sx-map__item", map).forEach((f) => f.classList.remove("is-open"));
-        fig.classList.add("is-open");
-        checkFind(fig.dataset.slug);
+      renderMap(map, false);
+      const openItem = (fig) => {
+        const s = window.sauceBySlug(fig.dataset.slug);
+        if (!s) return;
+        if (FIND.on) {
+          // Задание на скорость: соус можно выбрать или вернуться к сетке
+          lightbox(s, [
+            { label: "Выбрать", style: "primary", run: () => { closeLightbox(); checkFind(s.slug); } },
+            { label: "К выбору соуса", style: "soft", run: closeLightbox },
+          ]);
+        } else {
+          lightbox(s, [{ label: "Закрыть", style: "soft", run: closeLightbox }]);
+        }
       };
       map.addEventListener("click", (e) => {
         const fig = e.target.closest(".sx-map__item");
-        if (fig) open(fig);
+        if (fig) openItem(fig);
       });
       map.addEventListener("keydown", (e) => {
         if (e.key !== "Enter" && e.key !== " ") return;
         const fig = e.target.closest(".sx-map__item");
-        if (fig) { e.preventDefault(); open(fig); }
+        if (fig) { e.preventDefault(); openItem(fig); }
       });
     }
 
     const findBtn = $("#m3-find-start");
     if (findBtn) findBtn.addEventListener("click", startFind);
+
+    // Блок «0,5 секунды на слово» — только после верного ответа на экране 1
+    const q = $("#ku-page-ch3 .ku-quiz-q");
+    if (q) {
+      q.addEventListener("click", (e) => {
+        const btn = e.target.closest(".ku-choice");
+        if (btn && btn.dataset.correct === "1") {
+          const note = $("#m3-halfsecond");
+          if (note) note.hidden = false;
+        }
+      });
+    }
   }
 
-  // «Найди соус "1000 островов" за 3 секунды» — измеряем время и всегда даём
-  // успех: это доказательство «читать быстро», а не наказание за медлительность.
-  const FIND = { target: "thousand-islands", t0: 0, on: false };
+  /* blurred=true — режим задания: только цвета, названий не видно и подписей
+     под этикетками нет. */
+  function renderMap(map, blurred) {
+    map.classList.toggle("is-task", !!blurred);
+    map.innerHTML = shuffled(window.SAUCES).map((s) =>
+      '<figure class="sx-map__item" tabindex="0" role="button" ' +
+        'data-slug="' + s.slug + '" aria-label="' +
+        (blurred ? "Соус, этикетка скрыта" : esc(s.name)) + '">' +
+        slot(s, true, blurred) +
+        "<figcaption>" + esc(s.name) + "</figcaption></figure>").join("");
+  }
 
+  /* «Найди соус за 3 секунды» — измеряем время и всегда даём успех: это
+     доказательство «читать быстро», а не наказание за медлительность. */
   function startFind() {
     FIND.t0 = Date.now();
     FIND.on = true;
@@ -1093,7 +1312,8 @@
     fb.className = "ku-feedback";
     fb.innerHTML = "";
     $("#m3-find-task").hidden = false;
-    $("#m3-map").scrollIntoView({ behavior: "smooth", block: "center" });
+    renderMap($("#m3-map"), true);       // всё заблюрено, подписей нет
+    $("#m3-find-task").scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   function checkFind(slug) {
@@ -1102,14 +1322,14 @@
     if (slug !== FIND.target) {
       fb.className = "ku-feedback show incorrect";
       fb.innerHTML = "<strong>Это другой соус.</strong> Ищи название " +
-        "«Тысяча островов» — читай подписи, не цвета.";
+        "«Тысяча островов» — открывай этикетки и читай, а не угадывай по цвету.";
       return;
     }
     FIND.on = false;
     const sec = ((Date.now() - FIND.t0) / 1000).toFixed(1).replace(".", ",");
-    $$(".sx-map__item", $("#m3-map")).forEach((f) => {
-      if (f.dataset.slug === FIND.target) f.classList.add("correct");
-    });
+    renderMap($("#m3-map"), false);      // блюр снимаем, подписи возвращаем
+    const found = $('#m3-map [data-slug="' + FIND.target + '"]');
+    if (found) found.classList.add("correct");
     fb.className = "ku-feedback show correct";
     fb.innerHTML = "<strong>Нашёл за " + sec + " с.</strong> Отлично! Ты только что " +
       "доказал сам себе, что это быстро и удобно. На чтение одного слова уходит " +
@@ -1118,7 +1338,40 @@
     window.KU.progress.markDone("m3-find");
   }
 
-  /* ══ 11. МОДУЛЬ 6 · ФИНАЛЬНЫЕ ЦИФРЫ В СВОДКЕ ═════════════════════════ */
+  /* ══ 11. ПРЕВЬЮ ТРЕНАЖЁРА (вступление модуля 4) ══════════════════════ */
+
+  function renderPreview() {
+    const host = $("#sx-preview");
+    if (!host) return;
+    const demo = shuffled(window.SAUCES).slice(0, 10);
+    const order = demo[3];
+    host.innerHTML =
+      '<div class="sx-field" aria-hidden="true">' +
+        '<div class="sx-status"><span class="ku-badge">Режим 1</span>' +
+          '<span class="ku-badge">Заказ 1 / 10</span>' +
+          '<span class="sx-status__spacer"></span>' +
+          '<span class="ku-badge">⏱ 3,2 с</span>' +
+          '<span class="ku-badge">5 б.</span></div>' +
+        '<div class="sx-order"><span class="sx-order__label">К заказу:</span>' +
+          '<span class="sx-order__name">' + esc(order.name) + "</span></div>" +
+        '<div class="sx-shelf">' + demo.map((s) =>
+          '<span class="sx-bin' + (s.shape === "round" ? " is-round" : "") +
+            '" style="--c1:' + s.c1 + ";--c2:" + s.c2 + '">' +
+            '<span class="sx-bin__corner"></span>' +
+            '<span class="sx-bin__tag">' + esc(s.short) + "</span></span>").join("") +
+        "</div>" +
+        '<div class="sx-hand"><span class="sx-cup">' + slot(order, true, true) +
+          '</span><div class="sx-hand__actions">' +
+          '<span class="ku-btn primary s">Положить в пакет</span>' +
+          '<span class="ku-btn soft s">Приблизить</span>' +
+          '<span class="ku-btn ghost s">Другой соус</span></div></div>' +
+        '<div class="sx-bag"><span class="sx-bag__label">Пакет заказа</span></div>' +
+      "</div>" +
+      '<p class="sx-preview__cap">Так будет выглядеть рабочая зона. Этикетка в руке ' +
+        "размыта — прочитать название можно, только нажав «Приблизить».</p>";
+  }
+
+  /* ══ 12. МОДУЛЬ 6 · СВОДКА НА ФИНАЛЕ ═════════════════════════════════ */
 
   function renderFinishSummary() {
     const box = $("#sx-finish-summary");
@@ -1131,11 +1384,12 @@
       "</div>";
   }
 
-  /* ══ 12. ИНИЦИАЛИЗАЦИЯ ═══════════════════════════════════════════════ */
+  /* ══ 13. ИНИЦИАЛИЗАЦИЯ ═══════════════════════════════════════════════ */
 
   function init() {
     initModule1();
     initModule3();
+    renderPreview();
 
     $$("[data-mode-card]").forEach((card) => card.addEventListener("click", () => {
       if (card.classList.contains("locked")) { alertGate(card.dataset.modeCard); return; }
@@ -1145,13 +1399,13 @@
     // Роутер ДС снимает .locked с глав по факту «посетил предыдущую». Наши
     // гейты строже, поэтому после каждой навигации пересчитываем их поверх.
     const navBase = window.kuNavigate;
-    window.kuNavigate = function (id) { navBase.apply(this, arguments); applyGates(); };
+    window.kuNavigate = function () { navBase.apply(this, arguments); applyGates(); };
 
     applyGates();
     renderFinishSummary();
   }
 
-  // ku-scorm.js стреляет ku:ready на window load, когда состояние уже прочитано
+  // ku-scorm.js стреляет ku:ready на window load, когда состояние прочитано
   // из LMS/localStorage. Только после этого гейты знают правду о прогрессе.
   document.addEventListener("ku:ready", () => { applyGates(); renderFinishSummary(); });
   document.addEventListener("ku:done", () => { applyGates(); renderFinishSummary(); });
