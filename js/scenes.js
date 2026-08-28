@@ -1,173 +1,220 @@
 /* ════════════════════════════════════════════════════════════════════════
    ИЛЛЮСТРАЦИИ КУРСА — плоская векторная графика в палитре Burger King.
 
-   Почему SVG, а не фото: фотографии есть только для соусов. Пакет, закуски,
-   эмоции, гости и фон зала нарисованы здесь — это ноль килобайт в пакете,
-   масштабируется без потерь и работает офлайн.
+   Почему SVG, а не фото: фотографии есть только для соусов. Сцены, пакет,
+   закуски и персонажи нарисованы здесь — ноль килобайт в пакете,
+   масштабируется без потерь, работает офлайн.
 
-   ЕСЛИ ПОЯВЯТСЯ ФОТО: положить файлы в assets/scene/ (имена и промты —
-   в assets/ASSETS.md) и переключить нужный флаг в PHOTOS. Код сам заменит
-   рисунок на снимок. Флаг, а не проба через onerror: иначе курс на каждом
-   показе стучится за несуществующим файлом и сыпет 404 в консоль LMS.
+   СТИЛЬ ПЕРСОНАЖЕЙ. Первая версия читалась как пугающая: острые черты,
+   мелкие глаза, жёсткий контур. Здесь другой подход — «миловидная» плоская
+   иллюстрация: крупная голова, большие глаза с бликом, мягкие скруглённые
+   формы, румянец, тёплый тёмно-коричневый вместо чистого чёрного. Все
+   состояния строит ОДНА параметрическая функция face(), поэтому пять эмоций
+   и пять уровней настроения Гостя выглядят одной серией.
 
-   Эмоции и гости строятся ОДНОЙ параметрической функцией: брови, глаза и рот
-   задаются уровнем настроения. Так пять состояний выглядят одной серией,
-   а не пятью разными рисунками.
+   ЕСЛИ ПОЯВЯТСЯ ФОТО: положить файл в assets/scene/ (имена и промты —
+   в assets/ASSETS.md) и переключить флаг в PHOTOS. Флаг, а не проба через
+   onerror: иначе курс на каждом показе стучится за несуществующим файлом
+   и сыпет 404 в консоль LMS.
    ════════════════════════════════════════════════════════════════════════ */
 (function () {
   "use strict";
 
-  /* Какие фото уже лежат в assets/scene/. Все false — работают рисунки. */
   const PHOTOS = {
     "restaurant-bg": false,   // размытый зал ресторана — фон всего курса
+    "street": false,          // улица вечером, вдалеке светится ресторан
+    "home": false,            // дома, светится пакет с заказом
     "bag": false,             // фирменный бумажный пакет на вынос
     "nuggets": false, "fries": false, "wings": false,
     "guest-1": false, "guest-2": false, "guest-3": false,
     "guest-4": false, "guest-5": false,
+    "step-1": false, "step-2": false, "step-3": false,
   };
 
-  /* Палитра бренда. Держим локально: это иллюстрации, а не компоненты, и они
-     должны читаться одинаково в светлой и тёмной теме. */
+  /* Палитра. Держим локально: это иллюстрации, а не компоненты, и они должны
+     читаться одинаково в светлой и тёмной теме. */
   const C = {
-    red: "#D62300", redDark: "#A81B00", orange: "#FF8732", amber: "#F5B411",
-    brown: "#502314", brownMid: "#6E3A22", cream: "#F5EBDC",
-    paper: "#E3CFAC", paperMid: "#D2B98F", paperDark: "#B99B6E",
-    skin: "#F0C9A4", skinShade: "#DCA982",
-    hair: "#3E2415", white: "#FFFFFF", green: "#5CB531", ink: "#2A1810",
+    red: "#D62300", redDeep: "#A81B00", orange: "#FF8732", amber: "#F5B411",
+    brown: "#502314", cream: "#F5EBDC",
+    kraft: "#C9A579", kraftMid: "#B08E63", kraftDark: "#8E7049",
+    skin: "#F6D3B0", skinShade: "#E5B98F", blush: "#F09A8C",
+    hair: "#4A2C1A", hairSoft: "#5E3A24",
+    ink: "#3A2318",                       // мягкий «чёрный»: не режет глаз
+    night: "#1E2433", nightSoft: "#2C3446", grey: "#8A8F99",
+    white: "#FFFFFF", green: "#5CB531", sky: "#7FB4E8",
   };
 
   const FONT = "'Flame','Golos Text',sans-serif";
 
-  /* ══ 1. НАСТРОЕНИЕ: 5 уровней, одна параметрическая голова ══════════════
-     1 — злость/недовольство … 5 — искренняя радость. */
+  /* ══ 1. ПЕРСОНАЖ ═══════════════════════════════════════════════════════
+     face(mood, opts) → внутренность SVG в системе координат 200×220.
+     mood: 1 злой · 2 расстроенный · 3 равнодушный · 4 довольный · 5 радостный
+     opts: { tears, steam, cloud, sweat, tilt, closed } */
+
   const MOOD = {
-    1: { brow: "angry",  eye: "narrow", mouth: "frown-deep", accent: C.red },
-    2: { brow: "sad",    eye: "open",   mouth: "frown",      accent: C.redDark },
-    3: { brow: "flat",   eye: "open",   mouth: "flat",       accent: C.brownMid },
-    4: { brow: "flat",   eye: "open",   mouth: "slight",     accent: C.amber },
-    5: { brow: "raised", eye: "happy",  mouth: "smile-big",  accent: C.green },
+    1: { brow: "angry",  eye: "narrow", mouth: "frown-deep", shirt: C.red },
+    2: { brow: "sad",    eye: "round",  mouth: "frown",      shirt: C.redDeep },
+    3: { brow: "flat",   eye: "round",  mouth: "flat",       shirt: C.grey },
+    4: { brow: "soft",   eye: "round",  mouth: "smile",      shirt: C.amber },
+    5: { brow: "raised", eye: "joy",    mouth: "smile-open", shirt: C.green },
   };
 
+  /* Геометрия лица. Ключевые решения после первой версии, которая читалась
+     пугающе: голова стала круглой (была вытянутой), нос убран совсем — тонкая
+     тёмная дуга под глазами читалась как усы, — волосы получили мягкую чёлку
+     вместо плоской «шапочки», уши уменьшены и опущены к линии глаз. */
+  const EYE_L = 78, EYE_R = 122, EYE_Y = 100;
+
   function brows(kind) {
-    const pair = {
-      angry:  ["M60 74 L88 82", "M140 82 L112 74"],
-      sad:    ["M60 82 L88 74", "M140 74 L112 82"],
-      flat:   ["M60 78 L88 78", "M140 78 L112 78"],
-      raised: ["M58 80 Q74 68 90 78", "M142 80 Q126 68 110 78"],
+    const d = {
+      angry:  ["M60 80 Q70 80 84 90", "M140 90 Q130 80 116 80"],
+      sad:    ["M60 92 Q70 82 84 84", "M140 84 Q130 82 116 92"],
+      flat:   ["M62 86 Q72 83 84 86", "M138 86 Q128 83 116 86"],
+      soft:   ["M61 88 Q72 80 85 86", "M139 86 Q128 80 115 88"],
+      raised: ["M60 86 Q72 74 85 82", "M140 82 Q128 74 115 86"],
     }[kind];
-    return pair.map(function (d) {
-      return '<path d="' + d + '" stroke="' + C.hair +
-        '" stroke-width="7" stroke-linecap="round" fill="none"/>';
-    }).join("");
+    return d.map((x) => '<path d="' + x + '" stroke="' + C.hairSoft +
+      '" stroke-width="6.5" stroke-linecap="round" fill="none"/>').join("");
   }
 
-  function eyes(kind) {
-    if (kind === "happy") {
-      return [64, 116].map(function (x) {
-        return '<path d="M' + x + ' 98 Q' + (x + 10) + ' 87 ' + (x + 20) +
-          ' 98" stroke="' + C.ink + '" stroke-width="6" fill="none" ' +
-          'stroke-linecap="round"/>';
-      }).join("");
+  function eyes(kind, closed) {
+    if (closed) {
+      return [EYE_L, EYE_R].map((x) =>
+        '<path d="M' + (x - 12) + " " + EYE_Y + " Q" + x + " " + (EYE_Y + 10) +
+        " " + (x + 12) + " " + EYE_Y + '" stroke="' + C.ink +
+        '" stroke-width="5.5" fill="none" stroke-linecap="round"/>').join("");
     }
-    const ry = kind === "narrow" ? 5 : 8;
-    return [74, 126].map(function (cx) {
-      return '<ellipse cx="' + cx + '" cy="97" rx="7.5" ry="' + ry +
+    if (kind === "joy") {
+      return [EYE_L, EYE_R].map((x) =>
+        '<path d="M' + (x - 13) + " " + (EYE_Y + 4) + " Q" + x + " " + (EYE_Y - 12) +
+        " " + (x + 13) + " " + (EYE_Y + 4) + '" stroke="' + C.ink +
+        '" stroke-width="6" fill="none" stroke-linecap="round"/>').join("");
+    }
+    const ry = kind === "narrow" ? 9 : 13;
+    return [EYE_L, EYE_R].map((x) =>
+      '<ellipse cx="' + x + '" cy="' + EYE_Y + '" rx="10.5" ry="' + ry +
         '" fill="' + C.white + '"/>' +
-        '<circle cx="' + cx + '" cy="98" r="4.5" fill="' + C.ink + '"/>';
-    }).join("");
+      '<circle cx="' + x + '" cy="' + (EYE_Y + 1) + '" r="6.8" fill="' + C.ink + '"/>' +
+      '<circle cx="' + (x + 3) + '" cy="' + (EYE_Y - 3) + '" r="2.6" fill="' +
+        C.white + '"/>').join("");
   }
 
   function mouth(kind) {
+    if (kind === "smile-open") {
+      return '<path d="M82 126 Q100 152 118 126 Z" fill="' + C.ink + '"/>' +
+             '<path d="M89 131 Q100 143 111 131 Z" fill="#E0736B"/>';
+    }
     const d = {
-      "frown-deep": "M74 140 Q100 118 126 140",
-      "frown":      "M76 136 Q100 122 124 136",
-      "flat":       "M78 131 L122 131",
-      "slight":     "M76 128 Q100 139 124 128",
-      "smile-big":  "M72 126 Q100 154 128 126",
+      "frown-deep": "M84 138 Q100 122 116 138",
+      "frown":      "M85 135 Q100 124 115 135",
+      "flat":       "M88 131 Q100 133 112 131",
+      "smile":      "M85 127 Q100 140 115 127",
     }[kind];
-    const open = kind === "smile-big";
-    return '<path d="' + d + '" stroke="' + C.ink + '" stroke-width="7" ' +
-      'stroke-linecap="round" fill="' + (open ? C.ink : "none") + '"/>' +
-      (open ? '<path d="M82 132 Q100 145 118 132 Z" fill="#C4726B"/>' : "");
+    return '<path d="' + d + '" stroke="' + C.ink + '" stroke-width="5.5" ' +
+      'stroke-linecap="round" fill="none"/>';
   }
 
-  /* Голова с волосами, ушами и шеей — основа и для эмоций, и для гостей. */
-  function head(level) {
-    const m = MOOD[level];
-    return '' +
-      '<ellipse cx="53" cy="112" rx="8" ry="12" fill="' + C.skinShade + '"/>' +
-      '<ellipse cx="147" cy="112" rx="8" ry="12" fill="' + C.skinShade + '"/>' +
-      '<path d="M100 46 c30 0 47 22 47 52 0 34-21 58-47 58 s-47-24-47-58 ' +
-        'c0-30 17-52 47-52z" fill="' + C.skin + '"/>' +
-      '<path d="M100 150 c-14 0-25-6-32-16 c8 6 19 9 32 9 s24-3 32-9 ' +
-        'c-7 10-18 16-32 16z" fill="' + C.skinShade + '" opacity="0.45"/>' +
-      '<path d="M53 84 c1-27 20-42 47-42 s46 15 47 42 c-10-15-27-22-47-22 ' +
-        's-37 7-47 22z" fill="' + C.hair + '"/>' +
-      brows(m.brow) + eyes(m.eye) + mouth(m.mouth) +
-      '<path d="M91 155 h18 v16 h-18z" fill="' + C.skinShade + '"/>';
-  }
+  function face(mood, opts) {
+    const m = MOOD[mood] || MOOD[3];
+    const o = opts || {};
+    const tilt = o.tilt || 0;
 
-  /* Плечи и футболка — «человечек», а не голова в вакууме. */
-  function shoulders(level) {
-    const m = MOOD[level];
-    return '<path d="M100 166 c-31 0-54 18-60 44 h120 c-6-26-29-44-60-44z" ' +
-        'fill="' + m.accent + '"/>' +
-      '<path d="M100 166 c-6 0-12 1-17 3 l17 19 17-19 c-5-2-11-3-17-3z" ' +
+    const head =
+      // уши: маленькие, на линии глаз
+      '<ellipse cx="48" cy="104" rx="8" ry="11" fill="' + C.skinShade + '"/>' +
+      '<ellipse cx="152" cy="104" rx="8" ry="11" fill="' + C.skinShade + '"/>' +
+      // круглая голова — основа «миловидности»
+      '<ellipse cx="100" cy="98" rx="54" ry="57" fill="' + C.skin + '"/>' +
+      // волосы с мягкой чёлкой, а не плоской шапочкой
+      '<path d="M46 100 C46 58 68 41 100 41 C132 41 154 58 154 100 ' +
+        'C150 80 139 69 125 65 C114 77 84 79 71 70 C58 77 50 86 46 100 Z" ' +
+        'fill="' + C.hair + '"/>' +
+      brows(m.brow) + eyes(m.eye, o.closed) +
+      // нос — едва заметное пятнышко; тонкая дуга читалась как усы
+      '<ellipse cx="100" cy="116" rx="4" ry="3" fill="' + C.skinShade +
+        '" opacity="0.75"/>' +
+      mouth(m.mouth) +
+      '<ellipse cx="68" cy="122" rx="12" ry="7" fill="' + C.blush +
+        '" opacity="' + (mood === 1 ? 0.5 : 0.32) + '"/>' +
+      '<ellipse cx="132" cy="122" rx="12" ry="7" fill="' + C.blush +
+        '" opacity="' + (mood === 1 ? 0.5 : 0.32) + '"/>' +
+      (o.tears
+        ? '<path d="M' + EYE_L + ' 112 q6 16 0 21 q-6-5 0-21z" fill="' + C.sky + '"/>' +
+          '<path d="M' + EYE_R + ' 112 q6 16 0 21 q-6-5 0-21z" fill="' + C.sky + '"/>'
+        : "") +
+      (o.sweat
+        ? '<path d="M146 66 q7 12 0 16 q-7-4 0-16z" fill="' + C.sky + '"/>' : "");
+
+    const extras =
+      (o.steam
+        ? '<g opacity="0.9" stroke="' + C.red + '" stroke-width="4.5" fill="none" ' +
+          'stroke-linecap="round">' +
+          '<path d="M44 52 q-8-11 1-19"/><path d="M156 52 q8-11-1-19"/></g>'
+        : "") +
+      (o.cloud
+        ? '<g opacity="0.92">' +
+          '<path d="M60 24 q0-13 15-13 q5-11 17-8 q11-6 19 4 q15-2 15 13 ' +
+            'q0 9-11 9 H71 q-11 0-11-9z" fill="#7E8899"/>' +
+          '<path d="M82 38 l-6 12 M100 38 l-6 12 M118 38 l-6 12" ' +
+            'stroke="#7E8899" stroke-width="4" stroke-linecap="round"/></g>'
+        : "");
+
+    const body =
+      '<path d="M91 150 h18 v18 h-18z" fill="' + C.skinShade + '"/>' +
+      '<path d="M100 164 c-33 0-56 20-61 52 h122 c-5-32-28-52-61-52z" ' +
+        'fill="' + m.shirt + '"/>' +
+      '<path d="M100 164 c-7 0-13 1-19 4 l19 20 19-20 c-6-3-12-4-19-4z" ' +
         'fill="' + C.cream + '"/>';
+
+    return extras +
+      '<g transform="rotate(' + tilt + ' 100 110)">' + head + body + "</g>";
   }
 
   /* ══ 2. ЭМОЦИИ (модуль 1, шаг 5) ═══════════════════════════════════════
-     Пять состояний из сценария. Текстовая подпись остаётся рядом с рисунком:
+     Пять состояний из сценария. Подпись остаётся рядом с рисунком:
      «Бессилие» и «Испорченный вечер» одной картинкой однозначно не передать,
      и оставлять человека угадывать нельзя. */
-  const EMOTION_LEVEL = {
-    "Злость": 1, "Разочарование": 2, "Грусть": 2,
-    "Бессилие": 3, "Испорченный вечер": 1,
-  };
-
-  const EMOTION_EXTRA = {
-    "Злость":
-      '<path d="M38 68 q-11-13 0-24 M162 68 q11-13 0-24" stroke="' + C.red +
-      '" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.85"/>',
-    "Грусть":
-      '<path d="M128 108 q6 13 0 18 q-6-5 0-18z" fill="#5AA9E6"/>',
-    "Бессилие":
-      '<path d="M64 60 q7-11 15-6" stroke="#5AA9E6" stroke-width="4" ' +
-      'fill="none" stroke-linecap="round"/>' +
-      '<path d="M136 60 q-7-11-15-6" stroke="#5AA9E6" stroke-width="4" ' +
-      'fill="none" stroke-linecap="round"/>',
-    "Испорченный вечер":
-      '<g opacity="0.9">' +
-      '<path d="M58 32 q0-13 15-13 q4-11 17-9 q11-6 19 4 q15-2 15 13 ' +
-        'q0 9-11 9 H69 q-11 0-11-9z" fill="#6E7B8B"/>' +
-      '<path d="M82 46 l-7 13 M100 46 l-7 13 M118 46 l-7 13" ' +
-        'stroke="#6E7B8B" stroke-width="4" stroke-linecap="round"/></g>',
+  const EMOTIONS = {
+    "Злость":            { mood: 1, steam: true },
+    "Разочарование":     { mood: 2, tilt: -4 },
+    "Грусть":            { mood: 2, tears: true },
+    "Бессилие":          { mood: 3, closed: true, sweat: true, tilt: 7 },
+    "Испорченный вечер": { mood: 2, cloud: true, closed: true, tilt: 10 },
   };
 
   function emotionSvg(name) {
-    const level = EMOTION_LEVEL[name] || 3;
-    return '<svg viewBox="0 0 200 212" role="img" aria-label="' + name + '">' +
-      (EMOTION_EXTRA[name] || "") + head(level) + shoulders(level) + "</svg>";
+    const cfg = EMOTIONS[name] || { mood: 3 };
+    return '<svg viewBox="0 0 200 220" role="img" aria-label="' + name + '">' +
+      face(cfg.mood, cfg) + "</svg>";
   }
 
   /* ══ 3. ГОСТЬ С КАРТОШКОЙ (итоги режимов) ══════════════════════════════ */
   function friesBox(x, y, s) {
     return '<g transform="translate(' + x + ',' + y + ') scale(' + s + ')">' +
-      '<rect x="10" y="6" width="10" height="36" rx="5" fill="' + C.amber + '"/>' +
-      '<rect x="23" y="0" width="10" height="42" rx="5" fill="#FFD76B"/>' +
-      '<rect x="36" y="8" width="10" height="34" rx="5" fill="' + C.amber + '"/>' +
-      '<path d="M2 32 h54 l-7 46 a7 7 0 0 1-7 6 H16 a7 7 0 0 1-7-6z" ' +
+      '<rect x="10" y="6" width="11" height="38" rx="5" fill="' + C.amber + '"/>' +
+      '<rect x="24" y="0" width="11" height="44" rx="5" fill="#FFD76B"/>' +
+      '<rect x="38" y="8" width="11" height="36" rx="5" fill="' + C.amber + '"/>' +
+      '<path d="M2 34 h56 l-7 48 a7 7 0 0 1-7 6 H16 a7 7 0 0 1-7-6z" ' +
         'fill="' + C.red + '"/>' +
-      '<rect x="13" y="46" width="32" height="13" rx="5" fill="' + C.cream + '"/>' +
-      '</g>';
+      '<rect x="14" y="50" width="32" height="14" rx="5" fill="' + C.cream + '"/>' +
+      "</g>";
   }
 
+  const GUEST_OPTS = {
+    1: { mood: 1, steam: true },
+    2: { mood: 2, tears: true },
+    3: { mood: 3 },
+    4: { mood: 4 },
+    5: { mood: 5 },
+  };
+
   function guestSvg(level) {
-    return '<svg viewBox="0 0 270 212" role="img" ' +
-        'aria-label="Реакция гостя, уровень ' + level + ' из 5">' +
-      '<g transform="translate(0,0)">' + head(level) + shoulders(level) + '</g>' +
-      friesBox(192, 96, 0.95) +
-      '</svg>';
+    const cfg = GUEST_OPTS[level] || GUEST_OPTS[3];
+    return '<svg viewBox="0 0 280 220" role="img" ' +
+        'aria-label="Реакция Гостя, уровень ' + level + ' из 5">' +
+      face(cfg.mood, cfg) +
+      friesBox(200, 104, 0.95) +
+      "</svg>";
   }
 
   /* ══ 4. ЗВЁЗДЫ ОЦЕНКИ ══════════════════════════════════════════════════ */
@@ -176,56 +223,57 @@
 
   function starsSvg(filled, total) {
     const n = total || 5;
-    let out = '<div class="sx-stars" role="img" aria-label="Оценка гостя: ' +
-      filled + ' из ' + n + '">';
+    let out = '<div class="sx-stars" role="img" aria-label="Оценка Гостя: ' +
+      filled + " из " + n + '">';
     for (let i = 1; i <= n; i++) {
       out += '<svg viewBox="0 0 24 24" class="sx-star' +
         (i <= filled ? " is-on" : "") + '" aria-hidden="true">' +
         '<path d="' + STAR + '"/></svg>';
     }
-    return out + '</div>';
+    return out + "</div>";
   }
 
-  /* ══ 5. ФИРМЕННЫЙ ПАКЕТ НА ВЫНОС (модуль 1, шаг 4) ═════════════════════
-     Заказы на вынос выдаются в бумажном пакете, а не в коробке. Пакет
-     открывается: створки отходят наружу, внутри видна закуска и соус. */
-  function bagSvg(dishSvgInner) {
-    return '<svg viewBox="0 0 320 268" role="img" aria-label="Пакет с заказом">' +
-      '<ellipse cx="160" cy="252" rx="98" ry="11" fill="' + C.ink +
-        '" opacity="0.14"/>' +
-      // корпус пакета
-      '<path d="M62 96 h196 v142 a11 11 0 0 1-11 11 H73 a11 11 0 0 1-11-11z" ' +
-        'fill="' + C.paper + '"/>' +
-      // боковые складки — объём
-      '<path d="M62 96 h36 v153 H73 a11 11 0 0 1-11-11z" fill="' + C.paperMid +
-        '" opacity="0.7"/>' +
-      '<path d="M222 96 h36 v142 a11 11 0 0 1-11 11 h-25z" fill="' + C.paperMid +
-        '" opacity="0.45"/>' +
-      // вертикальные заломы бумаги
-      '<path d="M118 100 V246 M160 100 V246 M202 100 V246" stroke="' + C.paperDark +
-        '" stroke-width="1.5" opacity="0.35" fill="none"/>' +
-      // тёмная «внутренность» и содержимое — видны после открытия
-      '<path class="sx-bag__inside" d="M82 100 h156 v46 H82z" fill="' + C.ink +
+  /* ══ 5. ФИРМЕННЫЙ ПАКЕТ НА ВЫНОС ══════════════════════════════════════
+     Крафтовая бумага с заломами и боковыми фальцами, посередине — настоящий
+     логотип Burger King из assets/. Своим рисунком логотип не подменяем:
+     фирменный знак должен быть фирменным. */
+  function bagSvg(dishKey, opts) {
+    const o = opts || {};
+    return '<svg viewBox="0 0 320 280" role="img" aria-label="Пакет с заказом">' +
+      (o.glow
+        ? '<defs><radialGradient id="sxGlow"><stop offset="0" stop-color="#FFD9A0" ' +
+          'stop-opacity="0.95"/><stop offset="1" stop-color="#FFD9A0" ' +
+          'stop-opacity="0"/></radialGradient></defs>' +
+          '<ellipse cx="160" cy="170" rx="158" ry="140" fill="url(#sxGlow)"/>'
+        : "") +
+      '<ellipse cx="160" cy="264" rx="100" ry="11" fill="' + C.ink +
+        '" opacity="0.16"/>' +
+      // корпус
+      '<path d="M62 100 h196 v148 a12 12 0 0 1-12 12 H74 a12 12 0 0 1-12-12z" ' +
+        'fill="' + C.kraft + '"/>' +
+      // боковые фальцы дают объём
+      '<path d="M62 100 h34 v160 H74 a12 12 0 0 1-12-12z" fill="' + C.kraftMid +
+        '" opacity="0.85"/>' +
+      '<path d="M224 100 h34 v148 a12 12 0 0 1-12 12 h-22z" fill="' + C.kraftMid +
+        '" opacity="0.5"/>' +
+      // заломы бумаги
+      '<path d="M120 104 V254 M160 104 V254 M200 104 V254" stroke="' + C.kraftDark +
+        '" stroke-width="1.6" opacity="0.4" fill="none"/>' +
+      // тёмный зев и содержимое — проявляются при открытии
+      '<path class="sx-bag__inside" d="M80 104 h160 v44 H80z" fill="' + C.ink +
         '" opacity="0.72"/>' +
       '<g class="sx-bag__inside">' +
-        (dishSvgInner || friesBox(128, 58, 0.85)) +
-      '</g>' +
-      // створки: отходят наружу при открытии
-      '<path class="sx-bag__flap sx-bag__flap--l" d="M62 96 h98 v36 H62z" ' +
-        'fill="' + C.paper + '"/>' +
-      '<path class="sx-bag__flap sx-bag__flap--r" d="M160 96 h98 v36 h-98z" ' +
-        'fill="' + C.paperMid + '"/>' +
-      // фирменная плашка
-      '<g>' +
-        '<path d="M116 156 q0-23 44-23 t44 23z" fill="' + C.amber + '"/>' +
-        '<rect x="116" y="156" width="88" height="27" fill="' + C.red + '"/>' +
-        '<path d="M116 183 q0 23 44 23 t44-23z" fill="' + C.amber + '"/>' +
-        '<text x="160" y="174" text-anchor="middle" fill="' + C.cream +
-          '" font-family="' + FONT + '" font-size="15" font-weight="700">BURGER</text>' +
-        '<text x="160" y="199" text-anchor="middle" fill="' + C.red +
-          '" font-family="' + FONT + '" font-size="15" font-weight="700">KING</text>' +
-      '</g>' +
-      '</svg>';
+        (dishKey ? insetDish(dishKey) : friesBox(126, 60, 0.85)) +
+      "</g>" +
+      // створки верха
+      '<path class="sx-bag__flap sx-bag__flap--l" d="M62 100 h98 v34 H62z" ' +
+        'fill="' + C.kraft + '"/>' +
+      '<path class="sx-bag__flap sx-bag__flap--r" d="M160 100 h98 v34 h-98z" ' +
+        'fill="' + C.kraftMid + '"/>' +
+      // настоящий логотип бренда
+      '<image href="assets/bk_logo_vector.svg" x="112" y="150" width="96" ' +
+        'height="96" preserveAspectRatio="xMidYMid meet"/>' +
+      "</svg>";
   }
 
   /* ══ 6. ЗАКУСКИ ════════════════════════════════════════════════════════ */
@@ -241,7 +289,7 @@
       '<circle cx="61" cy="47" r="2.6" fill="#B06E17"/>' +
       '<circle cx="75" cy="54" r="2.6" fill="#B06E17"/>' +
       '<rect x="33" y="76" width="54" height="15" rx="6" fill="' + C.cream + '"/>' +
-      '</svg>',
+      "</svg>",
     fries:
       '<svg viewBox="0 0 120 124" role="img" aria-label="Картошка фри">' +
       '<rect x="35" y="18" width="12" height="48" rx="6" fill="' + C.amber + '"/>' +
@@ -251,7 +299,7 @@
       '<path d="M23 58 h74 l-9 56 a8 8 0 0 1-8 7 H40 a8 8 0 0 1-8-7z" ' +
         'fill="' + C.red + '"/>' +
       '<rect x="35" y="77" width="50" height="17" rx="6" fill="' + C.cream + '"/>' +
-      '</svg>',
+      "</svg>",
     wings:
       '<svg viewBox="0 0 120 124" role="img" aria-label="Крылышки">' +
       '<path d="M22 68 h76 l-7 39 a8 8 0 0 1-8 7 H37 a8 8 0 0 1-8-7z" ' +
@@ -262,71 +310,262 @@
         'fill="#E08040"/>' +
       '<path d="M70 45 c9-7 21-3 24 6 c2 8-3 14-11 15 l-9 1z" fill="#C05A22"/>' +
       '<rect x="31" y="80" width="54" height="15" rx="6" fill="' + C.cream + '"/>' +
-      '</svg>',
+      "</svg>",
   };
 
-  /* ══ 7. РАЗМЫТЫЙ ЗАЛ РЕСТОРАНА — фон курса ═════════════════════════════
-     Только намёк на среду: тёплые пятна света, панно меню, силуэт прилавка и
-     гостей. Сильно размыто и притушено — фон не должен спорить с текстом,
-     поэтому поверх него в CSS лежит плотная вуаль. */
+  function insetDish(key) {
+    if (!DISH[key]) return friesBox(126, 60, 0.85);
+    const inner = DISH[key].replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "");
+    return '<g transform="translate(110,46) scale(0.8)">' + inner + "</g>";
+  }
+
+  /* ══ 7. СЦЕНА «ПО ДОРОГЕ ДОМОЙ» (модуль 1, вступление) ═════════════════
+     Тусклая вечерняя улица, человек со спины, а вдалеке светится ресторан —
+     единственное тёплое пятно в кадре. Задача сцены — эмоция, а не детали. */
+  function streetSvg() {
+    return '<svg viewBox="0 0 640 300" role="img" ' +
+        'aria-label="Вечерняя улица, вдалеке светится ресторан Burger King">' +
+      '<defs>' +
+        '<linearGradient id="sxSky" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0" stop-color="#161C29"/>' +
+          '<stop offset="1" stop-color="#2E3648"/></linearGradient>' +
+        '<radialGradient id="sxWarm">' +
+          '<stop offset="0" stop-color="#FFC46B" stop-opacity="0.95"/>' +
+          '<stop offset="1" stop-color="#FFC46B" stop-opacity="0"/></radialGradient>' +
+      "</defs>" +
+      '<rect width="640" height="300" fill="url(#sxSky)"/>' +
+      // тусклые дома по бокам
+      '<g fill="' + C.night + '">' +
+        '<path d="M0 60 h90 v180 H0z"/><path d="M96 100 h74 v140 H96z"/>' +
+        '<path d="M470 96 h80 v144 h-80z"/><path d="M556 56 h84 v184 h-84z"/>' +
+      "</g>" +
+      // редкие холодные окна
+      '<g fill="#4A5468" opacity="0.75">' +
+        '<rect x="16" y="82" width="16" height="20" rx="3"/>' +
+        '<rect x="48" y="122" width="16" height="20" rx="3"/>' +
+        '<rect x="118" y="132" width="14" height="18" rx="3"/>' +
+        '<rect x="492" y="120" width="16" height="20" rx="3"/>' +
+        '<rect x="588" y="90" width="16" height="20" rx="3"/>' +
+      "</g>" +
+      // тёплое зарево ресторана
+      '<ellipse cx="320" cy="180" rx="180" ry="120" fill="url(#sxWarm)"/>' +
+      // сам ресторан вдалеке
+      '<g>' +
+        '<path d="M232 140 h176 v100 H232z" fill="#F3E4CC"/>' +
+        '<path d="M224 140 h192 l-10-22 H234z" fill="' + C.red + '"/>' +
+        '<rect x="252" y="164" width="46" height="52" rx="4" fill="#FFD9A0"/>' +
+        '<rect x="308" y="164" width="46" height="52" rx="4" fill="#FFD9A0"/>' +
+        '<rect x="364" y="164" width="30" height="52" rx="4" fill="#FFE6BF"/>' +
+        '<image href="assets/bk_logo_vector.svg" x="288" y="88" width="64" ' +
+          'height="64" preserveAspectRatio="xMidYMid meet"/>' +
+      "</g>" +
+      // мокрый асфальт с отражением
+      '<rect y="240" width="640" height="60" fill="#141A26"/>' +
+      '<ellipse cx="320" cy="252" rx="120" ry="12" fill="#FFC46B" opacity="0.22"/>' +
+      // человек со спины: тёмный силуэт, рюкзак, руки в карманах
+      '<g fill="#0F131C">' +
+        '<ellipse cx="150" cy="150" rx="26" ry="29"/>' +
+        '<path d="M150 176 c-30 0-50 22-53 64 h106 c-3-42-23-64-53-64z"/>' +
+        '<rect x="126" y="196" width="48" height="44" rx="12" fill="#1B2230"/>' +
+      "</g>" +
+      '<ellipse cx="150" cy="246" rx="34" ry="7" fill="#000" opacity="0.35"/>' +
+      "</svg>";
+  }
+
+  /* ══ 8. СЦЕНА «ДОМА» (модуль 1, шаг 4) ════════════════════════════════
+     Всё серое и потухшее, светится только пакет с заказом. */
+  function homeSvg() {
+    return '<svg viewBox="0 0 640 300" role="img" ' +
+        'aria-label="Дома вечером, светится пакет с заказом">' +
+      '<defs><radialGradient id="sxHomeGlow">' +
+        '<stop offset="0" stop-color="#FFD9A0" stop-opacity="0.9"/>' +
+        '<stop offset="1" stop-color="#FFD9A0" stop-opacity="0"/></radialGradient>' +
+      "</defs>" +
+      '<rect width="640" height="300" fill="#2A2E38"/>' +
+      // серая комната: окно, картина, диван
+      '<rect x="40" y="40" width="120" height="96" rx="6" fill="#3A404C"/>' +
+      '<path d="M40 88 h120 M100 40 v96" stroke="#4A505C" stroke-width="4"/>' +
+      '<rect x="470" y="56" width="96" height="70" rx="5" fill="#3A404C"/>' +
+      '<rect y="212" width="640" height="88" fill="#22262E"/>' +
+      // стол
+      '<rect x="150" y="206" width="340" height="14" rx="6" fill="#4A3A2E"/>' +
+      '<rect x="182" y="220" width="14" height="58" fill="#3B2E24"/>' +
+      '<rect x="444" y="220" width="14" height="58" fill="#3B2E24"/>' +
+      // зарево от пакета
+      '<ellipse cx="320" cy="176" rx="180" ry="110" fill="url(#sxHomeGlow)"/>' +
+      // сам пакет — единственное цветное пятно
+      '<g transform="translate(258,96) scale(0.42)">' +
+        '<path d="M62 100 h196 v148 a12 12 0 0 1-12 12 H74 a12 12 0 0 1-12-12z" ' +
+          'fill="' + C.kraft + '"/>' +
+        '<path d="M62 100 h34 v160 H74 a12 12 0 0 1-12-12z" fill="' + C.kraftMid + '"/>' +
+        '<path d="M62 100 h98 v34 H62z" fill="' + C.kraft + '"/>' +
+        '<path d="M160 100 h98 v34 h-98z" fill="' + C.kraftMid + '"/>' +
+        '<image href="assets/bk_logo_vector.svg" x="112" y="150" width="96" ' +
+          'height="96" preserveAspectRatio="xMidYMid meet"/>' +
+      "</g>" +
+      // человек за столом, со спины, ссутулился
+      '<g fill="#171B22">' +
+        '<ellipse cx="150" cy="150" rx="25" ry="28"/>' +
+        '<path d="M150 175 c-28 0-46 18-50 42 h100 c-4-24-22-42-50-42z"/>' +
+      "</g>" +
+      "</svg>";
+  }
+
+  /* ══ 9. ШАГИ «ПРАВИЛА ТРЁХ КАСАНИЙ» (модуль 5) ════════════════════════
+     Три кадра в ряд: взял — повернул — прочитал. Рисуем руку с упаковкой,
+     чтобы алгоритм читался без текста. */
+  /* Кадр «упаковка соуса»: сама банка с этикеткой. labelVisible решает,
+     видно ли текст на этикетке — в первом шаге она ещё повёрнута от себя. */
+  function sauceCup(x, y, scale, rot, labelVisible) {
+    return '<g transform="translate(' + x + ',' + y + ') scale(' + scale +
+        ') rotate(' + rot + ' 40 40)">' +
+      '<rect x="0" y="0" width="80" height="80" rx="16" fill="#B0392A"/>' +
+      '<rect x="6" y="6" width="68" height="68" rx="12" fill="' + C.red + '"/>' +
+      (labelVisible
+        ? '<rect x="14" y="18" width="52" height="16" rx="5" fill="' + C.cream + '"/>' +
+          '<rect x="14" y="40" width="52" height="6" rx="3" fill="' + C.cream +
+            '" opacity="0.85"/>' +
+          '<rect x="14" y="52" width="34" height="6" rx="3" fill="' + C.cream +
+            '" opacity="0.7"/>'
+        : '<rect x="14" y="18" width="52" height="16" rx="5" fill="#C9382C"/>' +
+          '<rect x="14" y="40" width="52" height="6" rx="3" fill="#C9382C"/>') +
+      "</g>";
+  }
+
+  /* Рука снизу: ладонь и три пальца поверх банки — читается даже в мелком
+     размере, потому что силуэт простой. */
+  function hand(x, y, scale) {
+    return '<g transform="translate(' + x + ',' + y + ') scale(' + scale + ')" fill="' +
+        C.skin + '">' +
+      '<path d="M0 22 c-4 14 4 30 20 34 c18 5 44 3 56-6 c10-8 8-22 0-28z"/>' +
+      '<rect x="4" y="0" width="20" height="30" rx="10"/>' +
+      '<rect x="28" y="-6" width="20" height="36" rx="10"/>' +
+      '<rect x="52" y="0" width="20" height="30" rx="10"/>' +
+      "</g>";
+  }
+
+  const STEPS = [
+    { n: 1, title: "Взял упаковку",
+      art: () =>
+        // полка с ячейками, из одной достают упаковку
+        '<g>' +
+          '<rect x="18" y="18" width="164" height="10" rx="4" fill="#AEB7BF"/>' +
+          '<rect x="18" y="28" width="50" height="34" rx="6" fill="#CBD1D6"/>' +
+          '<rect x="75" y="28" width="50" height="34" rx="6" fill="#CBD1D6"/>' +
+          '<rect x="132" y="28" width="50" height="34" rx="6" fill="#CBD1D6"/>' +
+          '<rect x="24" y="32" width="38" height="18" rx="4" fill="#F5A81C"/>' +
+          '<rect x="138" y="32" width="38" height="18" rx="4" fill="#5CB531"/>' +
+        "</g>" +
+        sauceCup(60, 72, 1.0, 0, false) +
+        hand(58, 128, 1.0),
+    },
+    { n: 2, title: "Повернул этикеткой к себе",
+      art: () =>
+        // круговая стрелка вокруг банки — жест поворота
+        '<path d="M44 96 a56 56 0 1 1 18 42" fill="none" stroke="' + C.amber +
+          '" stroke-width="9" stroke-linecap="round" opacity="0.9"/>' +
+        '<path d="M40 78 l6 20 l20-6z" fill="' + C.amber + '"/>' +
+        sauceCup(60, 56, 1.0, 0, true) +
+        hand(58, 112, 1.0),
+    },
+    { n: 3, title: "Прочитал название",
+      art: () =>
+        sauceCup(46, 52, 1.05, 0, true) +
+        hand(44, 112, 1.0) +
+        // глаз крупно — «прочитал»
+        '<g transform="translate(126,44)">' +
+          '<path d="M0 26 a34 22 0 0 1 68 0 a34 22 0 0 1-68 0z" fill="' + C.white +
+            '" stroke="' + C.ink + '" stroke-width="5"/>' +
+          '<circle cx="34" cy="26" r="13" fill="' + C.ink + '"/>' +
+          '<circle cx="39" cy="21" r="4.5" fill="' + C.white + '"/>' +
+        "</g>",
+    },
+  ];
+
+  function stepSvg(i) {
+    const s = STEPS[i];
+    return '<svg viewBox="0 0 200 180" role="img" aria-label="' + s.title + '">' +
+      '<rect width="200" height="180" rx="14" fill="#F3E8D8"/>' +
+      '<ellipse cx="100" cy="168" rx="60" ry="7" fill="' + C.ink + '" opacity="0.1"/>' +
+      s.art() +
+      "</svg>";
+  }
+
+  /* ══ 10. ФОН: ЗАЛ РЕСТОРАНА ═══════════════════════════════════════════
+     Сильно размытый интерьер: тёплые лампы, панно меню, прилавок, столики,
+     силуэты Гостей. Поверх него в CSS лежит плотная вуаль — фон обязан
+     читаться как атмосфера и не конкурировать с текстом. */
   function backdropSvg() {
     const s =
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" ' +
         'preserveAspectRatio="xMidYMid slice">' +
-      '<defs><filter id="b" x="-15%" y="-15%" width="130%" height="130%">' +
-        '<feGaussianBlur stdDeviation="28"/></filter></defs>' +
-      '<rect width="1200" height="700" fill="#F6EEE4"/>' +
+      '<defs>' +
+        '<filter id="b" x="-15%" y="-15%" width="130%" height="130%">' +
+          '<feGaussianBlur stdDeviation="30"/></filter>' +
+        '<linearGradient id="w" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0" stop-color="#F6E7CF"/>' +
+          '<stop offset="1" stop-color="#E7D3B6"/></linearGradient>' +
+      "</defs>" +
+      '<rect width="1200" height="700" fill="#F4EADD"/>' +
       '<g filter="url(#b)">' +
-        '<rect width="1200" height="430" fill="#EADCC9"/>' +
-        '<ellipse cx="230" cy="120" rx="155" ry="92" fill="#FFD9A0" opacity="0.85"/>' +
-        '<ellipse cx="620" cy="90" rx="155" ry="82" fill="#FFD9A0" opacity="0.7"/>' +
-        '<ellipse cx="1000" cy="130" rx="155" ry="92" fill="#FFD9A0" opacity="0.8"/>' +
-        '<rect x="120" y="180" width="300" height="150" rx="18" fill="#8A5A28" opacity="0.5"/>' +
-        '<rect x="470" y="170" width="260" height="160" rx="18" fill="#A8703A" opacity="0.45"/>' +
-        '<rect x="790" y="185" width="290" height="145" rx="18" fill="#8A5A28" opacity="0.4"/>' +
-        '<rect y="430" width="1200" height="120" fill="#C0392B" opacity="0.72"/>' +
-        '<rect y="540" width="1200" height="160" fill="#7A4A22" opacity="0.55"/>' +
-        '<circle cx="330" cy="408" r="54" fill="#6E4A34" opacity="0.5"/>' +
-        '<circle cx="760" cy="398" r="60" fill="#5E3F2C" opacity="0.45"/>' +
-        '<circle cx="990" cy="414" r="48" fill="#6E4A34" opacity="0.4"/>' +
-        '<rect x="180" y="470" width="175" height="27" rx="13" fill="#F5B411" opacity="0.6"/>' +
-        '<rect x="640" y="466" width="195" height="27" rx="13" fill="#F5B411" opacity="0.5"/>' +
-      '</g></svg>';
+        '<rect width="1200" height="440" fill="url(#w)"/>' +
+        // подвесные лампы
+        '<ellipse cx="170" cy="70" rx="86" ry="54" fill="#FFD08A" opacity="0.95"/>' +
+        '<ellipse cx="430" cy="46" rx="80" ry="46" fill="#FFD9A0" opacity="0.85"/>' +
+        '<ellipse cx="760" cy="60" rx="88" ry="52" fill="#FFD08A" opacity="0.9"/>' +
+        '<ellipse cx="1040" cy="44" rx="80" ry="46" fill="#FFD9A0" opacity="0.8"/>' +
+        // меню-борды над прилавком
+        '<rect x="150" y="150" width="250" height="140" rx="16" fill="#7A4A22" opacity="0.55"/>' +
+        '<rect x="430" y="140" width="250" height="150" rx="16" fill="#8E5A2A" opacity="0.5"/>' +
+        '<rect x="710" y="150" width="250" height="140" rx="16" fill="#7A4A22" opacity="0.5"/>' +
+        // прилавок и фартук
+        '<rect y="430" width="1200" height="110" fill="#C0392B" opacity="0.72"/>' +
+        '<rect y="524" width="1200" height="176" fill="#6E4322" opacity="0.6"/>' +
+        // силуэты Гостей в очереди
+        '<circle cx="250" cy="404" r="52" fill="#6E4A34" opacity="0.5"/>' +
+        '<circle cx="470" cy="392" r="58" fill="#5A3D2B" opacity="0.45"/>' +
+        '<circle cx="720" cy="400" r="50" fill="#6E4A34" opacity="0.42"/>' +
+        '<circle cx="960" cy="410" r="56" fill="#5A3D2B" opacity="0.4"/>' +
+        // подносы и стаканы на прилавке
+        '<rect x="150" y="466" width="180" height="26" rx="13" fill="#F5B411" opacity="0.6"/>' +
+        '<rect x="560" y="462" width="200" height="26" rx="13" fill="#F5B411" opacity="0.5"/>' +
+        '<rect x="880" y="450" width="46" height="60" rx="12" fill="#D62300" opacity="0.5"/>' +
+        // зелень для тёплого пятна
+        '<circle cx="1120" cy="330" r="70" fill="#5CB531" opacity="0.3"/>' +
+      "</g></svg>";
     return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);
   }
 
-  /* ══ 8. ПУБЛИЧНОЕ API ══════════════════════════════════════════════════ */
+  /* ══ 11. ПУБЛИЧНОЕ API ════════════════════════════════════════════════ */
 
-  // Фото, если оно объявлено в PHOTOS; иначе рисунок.
-  function art(name, svg, alt) {
-    if (PHOTOS[name]) {
-      return '<img src="assets/scene/' + name + '.webp" alt="' +
-        (alt || "") + '" loading="lazy">';
-    }
-    return svg;
+  function photo(name, alt) {
+    return '<img src="assets/scene/' + name + '.webp" alt="' + (alt || "") +
+      '" loading="lazy">';
   }
 
   window.SCENES = {
-    emotion: function (name) { return emotionSvg(name); },
-    guest: function (level) {
-      return art("guest-" + level, guestSvg(level), "Реакция гостя");
-    },
+    emotion: (name) => emotionSvg(name),
+    guest: (level) => PHOTOS["guest-" + level]
+      ? photo("guest-" + level, "Реакция Гостя")
+      : guestSvg(level),
     stars: starsSvg,
-    bag: function (dishKey) {
-      if (PHOTOS.bag) return art("bag", "", "Пакет с заказом");
-      return bagSvg(dishKey ? insetDish(dishKey) : null);
-    },
-    dish: function (key) { return art(key, DISH[key] || "", key); },
-    hasDish: function (key) { return !!DISH[key]; },
+    bag: (dishKey, opts) => PHOTOS.bag
+      ? photo("bag", "Пакет с заказом")
+      : bagSvg(dishKey, opts),
+    dish: (key) => PHOTOS[key] ? photo(key, key) : (DISH[key] || ""),
+    street: () => PHOTOS.street
+      ? photo("street", "Вечерняя улица, вдалеке светится ресторан Burger King")
+      : streetSvg(),
+    home: () => PHOTOS.home
+      ? photo("home", "Дома вечером, светится пакет с заказом")
+      : homeSvg(),
+    step: (i) => PHOTOS["step-" + (i + 1)]
+      ? photo("step-" + (i + 1), STEPS[i].title)
+      : stepSvg(i),
+    stepTitle: (i) => STEPS[i].title,
+    stepCount: () => STEPS.length,
     backdropUrl: backdropSvg,
   };
-
-  /* Закуска внутри пакета: тот же рисунок, вложенный со сдвигом и масштабом. */
-  function insetDish(key) {
-    if (!DISH[key]) return friesBox(128, 58, 0.85);
-    const inner = DISH[key].replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "");
-    return '<g transform="translate(112,44) scale(0.78)">' + inner + '</g>';
-  }
 
   /* Фон вешаем один раз на корень документа — одна картинка на весь курс. */
   function applyBackdrop() {

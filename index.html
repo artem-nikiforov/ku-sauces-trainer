@@ -7,7 +7,7 @@
   SCORM 1.2 (прогресс, переменные, завершение по кнопке) — js/ku-scorm.js.
   Курсовое: css/course.css (фон зала, стеллаж, ячейки, пакет, крупный план),
   js/sauces.js (каталог соусов — единственный источник правды),
-  js/scenes.js (иллюстрации: пакет, закуски, эмоции, гости, звёзды, фон),
+  js/scenes.js (иллюстрации: пакет, закуски, эмоции, Гости, звёзды, фон),
   js/trainer.js (три режима на одном движке раунда + гейты).
 
   ТАЧ-FIRST: проходят с планшета и личного телефона. Ни одного действия
@@ -52,7 +52,7 @@
   <symbol id="i-heart-hand" viewBox="0 0 24 24"><path d="M11 14h2a2 2 0 0 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 16"/><path d="m14.45 13.39 5.05-4.694C20.196 8 21 6.85 21 5.75a2.75 2.75 0 0 0-4.797-1.837.276.276 0 0 1-.406 0A2.75 2.75 0 0 0 11 5.75c0 1.2.802 2.248 1.5 2.946L16 11.95"/><path d="m2 15 6 6"/><path d="m7 20 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a1 1 0 0 0-2.75-2.91"/></symbol>
 </defs></svg>
 
-<!-- Вся графика курса (пакет, закуски, эмоции, гости, звёзды, фон зала)
+<!-- Вся графика курса (пакет, закуски, эмоции, Гости, звёзды, фон зала)
      рисуется в js/scenes.js. Там же промты на замену рисунков фото. -->
 
 <!-- ═══ ШАПКА С ПРОГРЕССОМ ═══ -->
@@ -81,8 +81,8 @@
           <h1 class="ku-display">Работа с соусами</h1>
           <div class="ku-space s"></div>
           <p class="ku-lead">Соусы с похожими этикетками путают каждый день. После этого
-            тренажёра ты будешь <strong>читать название</strong>, а не хватать по цвету —
-            и это займёт у тебя полсекунды.</p>
+            тренажёра ты будешь за несколько секунд выбирать правильный соус. Вот увидишь,
+            именно столько тебе понадобится, чтобы делать выбор без ошибок.</p>
         </div>
         <img class="ku-hero-img" data-ku-hero alt="" hidden>
       </div>
@@ -98,7 +98,7 @@
         <button class="ku-card ku-chapter" id="ku-home-card-1" style="width:100%;text-align:left" onclick="SX.go('ch1')">
           <span class="ku-lock-badge"><svg class="ku-ico s"><use href="#i-lock"/></svg></span>
           <div class="ku-chapter__num">1</div>
-          <div class="ku-chapter__body"><h3>Поставь себя на место гостя</h3><p>~4 мин</p></div>
+          <div class="ku-chapter__body"><h3>Поставь себя на место Гостя</h3><p>~4 мин</p></div>
         </button>
 
         <button class="ku-card ku-chapter locked" id="ku-home-card-2" style="width:100%;text-align:left" onclick="SX.go('ch2')">
@@ -128,7 +128,7 @@
         <button class="ku-card ku-chapter locked" id="ku-home-card-6" data-chapter-card="ch6" style="width:100%;text-align:left" onclick="SX.go('ch6')">
           <span class="ku-lock-badge"><svg class="ku-ico s"><use href="#i-lock"/></svg></span>
           <div class="ku-chapter__num">6</div>
-          <div class="ku-chapter__body"><h3>Финальный тест и рефлексия</h3><p>~4 мин</p></div>
+          <div class="ku-chapter__body"><h3>Финальный тест</h3><p>~4 мин</p></div>
         </button>
 
       </div>
@@ -154,9 +154,15 @@
       <div class="ku-space m"></div>
       <span class="ku-eyebrow">Модуль 1</span>
       <div class="ku-space s"></div>
-      <h2 class="ku-h1">Поставь себя на место гостя</h2>
+      <h2 class="ku-h1">Поставь себя на место Гостя</h2>
       <div class="ku-space m"></div>
 
+      <!-- Иллюстрация работает на эмоцию: тусклая улица и единственное тёплое
+           пятно — ресторан вдалеке. Рисует js/scenes.js -->
+      <figure class="sx-scene ku-reveal" id="m1-scene-street">
+        <figcaption class="sx-scene__cap">По дороге домой после смены</figcaption>
+      </figure>
+      <div class="ku-space m"></div>
       <div class="ku-prose ku-reveal">
         <p>Представь: ты выходишь после тяжёлой смены. Едешь домой. Рядом с домом
           есть ресторан Burger King. В пути ты решил заказать себе закуску и соус,
@@ -167,7 +173,7 @@
 
       <!-- ── Шаг 1: выбор блюда ─────────────────────────────────────────── -->
       <div class="ku-exercise ku-reveal" data-ku-id="m1-empathy">
-        <div class="ku-exercise__label">Шаг 1. Твой заказ</div>
+        <div class="ku-exercise__label">Шаг 1. Сделай заказ закуски</div>
         <p class="ku-small ku-soft">Что берёшь?</p>
         <div class="ku-space s"></div>
         <div class="sx-pick">
@@ -189,7 +195,7 @@
 
       <!-- ── Шаг 2: идеальные соусы ─────────────────────────────────────── -->
       <div class="ku-exercise ku-reveal" id="m1-step-love" hidden>
-        <div class="ku-exercise__label">Шаг 2. Идеальная пара</div>
+        <div class="ku-exercise__label">Шаг 2. Выбери любимые соусы</div>
         <p class="ku-small ku-soft">Выбери <strong>3 соуса</strong>, которые идеально
           подходят к твоему блюду. По твоему вкусу — правильного ответа нет.
           Выбрано: <b id="m1-love-count">0 из 3</b></p>
@@ -208,9 +214,15 @@
 
       <!-- ── Шаг 4: заказ приехал ───────────────────────────────────────── -->
       <div class="ku-exercise ku-reveal" id="m1-step-box" hidden>
-        <div class="ku-exercise__label">Шаг 4. Заказ приехал</div>
+        <div class="ku-exercise__label">Шаг 4. Посмотри, что в заказе</div>
         <p class="ku-small ku-soft">Ты приехал домой. Фирменный пакет, внутри — то,
           чего ты ждал весь день. Открывай.</p>
+        <div class="ku-space s"></div>
+        <!-- Дома всё серое и потухшее, светится только пакет — та же
+             эмоциональная нота, что и на улице -->
+        <figure class="sx-scene ku-reveal" id="m1-scene-home">
+          <figcaption class="sx-scene__cap">Наконец-то дома</figcaption>
+        </figure>
         <div class="ku-space s"></div>
         <!-- Заказы на вынос выдаются в бумажном пакете, а не в коробке.
              Рисунок пакета и закуски внутри — js/scenes.js -->
@@ -254,7 +266,7 @@
           <span class="ku-callout__icon"><svg class="ku-ico l"><use href="#i-heart-hand"/></svg></span>
           <div>
             <div class="ku-callout__title">Представь, что это было по-настоящему</div>
-            <p>Ты голодный, после тяжёлого рабочего дня, хотел порадовать себя любимой
+            <p>Ты голодный, после тяжёлого рабочего дня. Хотел порадовать себя любимой
                закуской с вкусным соусом. А получил то, что получил…</p>
           </div>
         </div>
@@ -273,8 +285,8 @@
         <div class="ku-space m"></div>
         <div class="ku-callout">
           <span class="ku-callout__icon"><svg class="ku-ico l"><use href="#i-bulb"/></svg></span>
-          <div><div class="ku-callout__title">А теперь умножь эту эмоцию на 100 гостей в день</div>
-            <p>Именно это чувство ежедневно испытывают твои гости, когда ты ошибаешься.
+          <div><div class="ku-callout__title">А теперь умножь эту эмоцию на 100 Гостей в день</div>
+            <p>Именно это чувство ежедневно испытывают твои Гости, когда ты ошибаешься.
                Хочешь это исправить? Тогда поехали дальше!</p></div>
         </div>
         <div class="next-row" style="margin-top:var(--ku-space-l);display:flex;justify-content:center">
@@ -333,13 +345,13 @@
 
       <div class="ku-callout danger ku-reveal">
         <span class="ku-callout__icon"><svg class="ku-ico l"><use href="#i-alert"/></svg></span>
-        <div><div class="ku-callout__title">480 гостей за месяц получают не тот соус</div>
+        <div><div class="ku-callout__title">480 Гостей за месяц получают не тот соус</div>
           <p>Просто потому, что кто-то не прочитал название на этикетке.</p></div>
       </div>
       <div class="ku-space m"></div>
 
       <div class="ku-prose ku-reveal">
-        <p>Если гость не получает любимый соус, он ставит оценку на 1, а то и 2–3 балла
+        <p>Если Гость не получает любимый соус, он ставит оценку на 1, а то и 2–3 балла
            ниже. Только <strong>1 балл репутации = минус 15% повторных визитов</strong>.</p>
       </div>
       <div class="ku-space m"></div>
@@ -399,8 +411,8 @@
       <!-- ── Экран 1: визуальное сравнение ──────────────────────────────── -->
       <div class="ku-exercise ku-reveal" data-ku-id="m3-compare" data-quiz-group="fb-m3-compare">
         <div class="ku-exercise__label">Найди отличие</div>
-        <p class="ku-small ku-soft">Вот две этикетки крупным планом. Чем они отличаются
-          визуально?</p>
+        <p class="ku-small ku-soft">Вот две этикетки крупным планом. Чем они очевидно
+          отличаются больше всего?</p>
         <div class="ku-space s"></div>
         <div class="sx-compare">
           <figure>
@@ -461,7 +473,7 @@
           <div class="ku-space s"></div>
           <div class="ku-callout warning">
             <span class="ku-callout__icon"><svg class="ku-ico l"><use href="#i-target"/></svg></span>
-            <div><div class="ku-callout__title">Найди соус «Тысяча островов»</div>
+            <div><div class="ku-callout__title">Найди соус «Горчичный»</div>
               <p>Время пошло. Этикетки выше размыты — видны только цвета.
                  Нажимай на соус, чтобы открыть этикетку и прочитать название,
                  затем жми «Выбрать».</p></div>
@@ -493,14 +505,42 @@
       <p class="ku-lead">Сейчас ты потренируешься упаковывать соусы в заказ в формате
         игры. В игре будет 3 режима: тренировочный, работа над ошибками и финальный
         экзамен.</p>
-      <div class="ku-space s"></div>
+      <div class="ku-space m"></div>
+
+      <!-- Полотно текста никто не читает: разбиваем на карточки «что где»,
+           а предупреждение выносим отдельной приметной плашкой -->
+      <div class="sx-zones ku-reveal">
+        <div class="sx-zone">
+          <span class="sx-zone__num">1</span>
+          <div><h4>Сверху — заказ Гостя</h4>
+            <p>Соус, который Гость попросил положить в пакет.</p></div>
+        </div>
+        <div class="sx-zone">
+          <span class="sx-zone__num">2</span>
+          <div><h4>По центру — стеллаж</h4>
+            <p>Ячейки подписаны, и ты видишь цвета соусов.</p></div>
+        </div>
+        <div class="sx-zone">
+          <span class="sx-zone__num">3</span>
+          <div><h4>Внизу — пакет</h4>
+            <p>Сюда нужно положить выбранный соус.</p></div>
+        </div>
+      </div>
+      <div class="ku-space m"></div>
+
       <div class="ku-prose ku-reveal">
-        <p>Перед тобой будет рабочая зона. <b>Слева</b> — соус, который заказал Гость.
-          <b>По центру</b> — стеллаж с ячейками: ячейки подписаны, и ты видишь цвета
-          соусов. <b>Внизу</b> — пакет, в который нужно положить соус.</p>
-        <p>Твоя задача — посмотреть на заказ Гостя и положить правильный соус. В игре
-          ты можешь сразу положить соус в заказ или приблизить его, чтобы прочитать
-          этикетку. Выбор за тобой.</p>
+        <p>Твоя задача — посмотреть на заказ Гостя и положить правильный соус.
+          В игре ты можешь сразу положить соус в заказ или приблизить его, чтобы
+          прочитать этикетку. Выбор за тобой.</p>
+      </div>
+      <div class="ku-space m"></div>
+
+      <div class="sx-warning ku-reveal">
+        <span class="sx-warning__badge">
+          <svg class="ku-ico"><use href="#i-alert"/></svg> Важно
+        </span>
+        <p>Как и в реальной жизни, в ячейке может лежать <b>не тот соус, который
+          на ней подписан</b>. Будь внимателен.</p>
       </div>
       <div class="ku-space m"></div>
 
@@ -520,7 +560,7 @@
             <span class="sx-mode__num">1</span>
             <span class="sx-mode__body">
               <h3>Тренировка осознанности</h3>
-              <p>10 заказов, без времени, с мгновенными подсказками.
+              <p>10 заказов, без ограничения по времени, с мгновенными подсказками.
                  Проходной балл — 40 из 50.</p>
             </span>
             <span class="ku-badge" data-mode-state>Открыт</span>
@@ -530,7 +570,7 @@
             <span class="sx-mode__num">2</span>
             <span class="sx-mode__body">
               <h3>Режим реальной смены</h3>
-              <p>5 заказов пачкой, без времени. Никакой обратной связи до
+              <p>5 заказов пачкой, без ограничения по времени. Обратной связи не будет до
                  самого конца. Порог — 20 из 25.</p>
             </span>
             <span class="ku-badge" data-mode-state>Закрыто</span>
@@ -540,7 +580,7 @@
             <span class="sx-mode__num">3</span>
             <span class="sx-mode__body">
               <h3>Экзамен</h3>
-              <p>60 секунд, база — 15 заказов, соусы меняются местами.
+              <p>70 секунд, база — 15 заказов, соусы меняются местами.
                  Дальше курса пускает только «золото».</p>
             </span>
             <span class="ku-badge" data-mode-state>Закрыто</span>
@@ -575,26 +615,12 @@
       <h2 class="ku-h1">Работа в пик</h2>
       <div class="ku-space s"></div>
       <p class="ku-lead">Чтобы никогда не ошибаться с соусом, запомни простой алгоритм.
-        Он работает даже когда очередь до двери.</p>
+        Он работает, даже когда очередь до двери.</p>
       <div class="ku-space m"></div>
 
-      <div class="ku-timeline ku-reveal">
-        <div class="ku-tl-item">
-          <span class="ku-tl-item__dot">1</span>
-          <div><h4 class="ku-h4">Взял упаковку со стеллажа</h4>
-            <p class="ku-small ku-soft">Одно касание. Пока ничего не решаешь.</p></div>
-        </div>
-        <div class="ku-tl-item">
-          <span class="ku-tl-item__dot">2</span>
-          <div><h4 class="ku-h4">Повернул её к себе этикеткой</h4>
-            <p class="ku-small ku-soft">Так, чтобы было видно текст, а не только цвет.</p></div>
-        </div>
-        <div class="ku-tl-item">
-          <span class="ku-tl-item__dot">3</span>
-          <div><h4 class="ku-h4">Прочитал название про себя</h4>
-            <p class="ku-small ku-soft">Убедился, что это «Барбекю», а не «Кетчуп».</p></div>
-        </div>
-      </div>
+      <!-- Горизонтальный ряд «кадров»: взял — повернул — прочитал.
+           Иллюстрации рисует js/scenes.js, подписи оттуда же -->
+      <div class="sx-steps ku-reveal" id="m5-steps"></div>
       <div class="ku-space m"></div>
 
       <div class="ku-callout success ku-reveal">
@@ -671,8 +697,8 @@
       <div class="ku-space s"></div>
       <h2 class="ku-h1">Поздравляем!</h2>
       <p class="ku-lead">Прочитать этикетку соуса — это 0,5 секунды твоего времени
-        и сотни довольных гостей, которые будут тебе благодарны и вернутся к нам
-        ещё. Спасибо, что ты с нами!</p>
+        и сотни довольных Гостей, которые будут тебе благодарны и вернутся к нам
+        снова. Спасибо, что ты с нами!</p>
       <div class="ku-space m"></div>
 
       <div id="sx-finish-summary"></div>
@@ -682,7 +708,6 @@
       <div class="ku-space s"></div>
       <div class="ku-row center">
         <button class="ku-btn soft" data-ku-report-copy><svg class="ku-ico"><use href="#i-copy"/></svg> Скопировать сводку</button>
-        <button class="ku-btn soft" data-ku-report-download><svg class="ku-ico"><use href="#i-download"/></svg> Скачать .txt</button>
       </div>
       <div class="ku-space l"></div>
 
@@ -706,7 +731,7 @@
   <input type="hidden" data-ku-var="sx-dish"  data-ku-label="Модуль 1 · выбранное блюдо">
   <input type="hidden" data-ku-var="sx-love"  data-ku-label="Модуль 1 · идеальные соусы">
   <input type="hidden" data-ku-var="sx-hate"  data-ku-label="Модуль 1 · соусы, которые всё испортят">
-  <input type="hidden" data-ku-var="sx-emo"   data-ku-label="Модуль 1 · эмоция гостя">
+  <input type="hidden" data-ku-var="sx-emo"   data-ku-label="Модуль 1 · эмоция Гостя">
   <input type="hidden" data-ku-var="sx-ret"   data-ku-label="Модуль 1 · вернулся бы в ресторан">
   <input type="hidden" data-ku-var="sx-m1"    data-ku-label="Режим 1 · лучший балл из 50">
   <input type="hidden" data-ku-var="sx-m2"    data-ku-label="Режим 2 · лучший балл из 25">

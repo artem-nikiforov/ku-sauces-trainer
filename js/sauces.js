@@ -81,21 +81,21 @@
      равно читается только на самой этикетке — ячейка лишь ориентир, и она
      может лгать (внутри бывает другой соус). */
   const SHORT = {
-    "ketchup": "Кетчуп",
-    "barbecue": "Барбекю",
+    "ketchup": "Кет­чуп",
+    "barbecue": "Бар­бекю",
     "thousand-islands": "1000 островов",
     "syrny": "Сырный",
-    "mustard": "Горчичный",
+    "mustard": "Гор­чичный",
     "kislo-sladkiy": "Кисло-сладкий",
     "xxl-4-cheese": "XXL 4 сыра",
     "xxl-chili-cheese": "XXL Чили Чиз",
     "curry": "Карри",
-    "parmesan": "Пармезан",
-    "spicy": "Острый",
+    "parmesan": "Пар­мезан",
+    "spicy": "Ост­рый",
     "grill": "Гриль",
     "smetana-luk": "Сметана-лук",
-    "caesar": "Цезарь",
-    "garlic": "Чесночный",
+    "caesar": "Це­зарь",
+    "garlic": "Чес­ночный",
   };
   window.SAUCES.forEach(function (s) { s.short = SHORT[s.slug] || s.name; });
 

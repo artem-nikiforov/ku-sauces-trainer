@@ -47,7 +47,7 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  /* Название соуса всегда в кавычках: иначе «гость просил Тысяча островов»
+  /* Название соуса всегда в кавычках: иначе «Гость просил Тысяча островов»
      требует падежа, а корректно склонять 15 названий не выйдет. */
   const nm = (sauce) => "«" + esc(sauce.name) + "»";
 
@@ -116,7 +116,7 @@
      старта) — иначе автоплей-политика браузера его заглушит. */
 
   const Sound = {
-    ctx: null, timer: null, muted: false,
+    ctx: null, muted: false,
     ensure() {
       if (this.ctx) return this.ctx;
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -124,28 +124,27 @@
       try { this.ctx = new AC(); } catch (e) { this.ctx = null; }
       return this.ctx;
     },
-    click(freq, dur, vol) {
+    /* Мягкий тон: синус с плавной атакой и затуханием. Прежний «квадрат»
+       звучал резко и дребезжал — именно он и раздражал. */
+    tone(freq, dur, vol) {
       if (this.muted) return;
       const ctx = this.ensure();
       if (!ctx) return;
       if (ctx.state === "suspended") ctx.resume();
       const osc = ctx.createOscillator(), gain = ctx.createGain();
-      osc.type = "square";
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + 0.005);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(vol, ctx.currentTime + 0.03);
       gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
       osc.connect(gain).connect(ctx.destination);
       osc.start();
-      osc.stop(ctx.currentTime + dur + 0.02);
+      osc.stop(ctx.currentTime + dur + 0.05);
     },
-    tickOn() {
-      this.tickOff();
-      this.timer = setInterval(() => this.click(1250, 0.04, 0.05), 1000);
-    },
-    tickOff() { clearInterval(this.timer); this.timer = null; },
-    ok()   { this.click(880, 0.09, 0.06); },
-    fail() { this.click(180, 0.18, 0.07); },
+    // Верно — короткая восходящая терция, приятная на слух
+    ok()   { this.tone(660, 0.16, 0.05); setTimeout(() => this.tone(880, 0.2, 0.045), 90); },
+    // Ошибка — низкий мягкий тон, без резкости
+    fail() { this.tone(300, 0.26, 0.05); },
     toggleMute(btn) {
       this.muted = !this.muted;
       btn.textContent = this.muted ? "Звук выкл." : "Звук вкл.";
@@ -170,14 +169,14 @@
     m1: {
       key: "m1", host: "#sx-play", out: "#sx-result",
       orders: 10, max: 50, pass: 40, feedback: "instant",
-      clock: "stopwatch", reshuffle: false, sound: false, trapRate: 0.35,
+      clock: "stopwatch", reshuffle: false, sound: true, trapRate: 0.35,
       title: "Режим 1 · Тренировка осознанности",
       say: "Завтра приду с друзьями!",
     },
     m2: {
       key: "m2", host: "#sx-play", out: "#sx-result",
       orders: 5, max: 25, pass: 20, feedback: "none",
-      clock: "stopwatch", reshuffle: false, sound: true, trapRate: 0.4,
+      clock: "stopwatch", reshuffle: false, sound: false, trapRate: 0.4,
       title: "Режим 2 · Режим реальной смены",
       say: "Теперь буду заказывать только у вас!",
     },
@@ -196,7 +195,7 @@
       key: "fin", host: "#sx-play-fin", out: "#sx-result-fin",
       // 10 заказов. Финал никого не блокирует — он измеряет, а не пускает.
       orders: 10, max: 50, pass: 0, feedback: "mark",
-      clock: "stopwatch", reshuffle: true, sound: false, trapRate: 0.4,
+      clock: "stopwatch", reshuffle: true, sound: true, trapRate: 0.4,
       title: "Финальный тест",
       say: "Теперь буду заказывать только у вас!",
     },
@@ -512,7 +511,7 @@
         '<button type="button" class="ku-btn l" data-next>Дальше</button>'
       : '<span class="sx-flash__title">Стоп!</span>' +
         '<p class="sx-flash__text">Ты положил <b>' + nm(put) + '</b>. ' +
-        'Но гость ждёт <b>' + nm(target) + '</b>. ' +
+        'Но Гость ждёт <b>' + nm(target) + '</b>. ' +
         'Читай название на этикетке!</p>' +
         '<button type="button" class="ku-btn l" data-next>Понял, дальше</button>';
     if (correct) Sound.ok(); else Sound.fail();
@@ -568,7 +567,7 @@
       G.tick = setInterval(paint, 100);
     }
   }
-  function stopClock() { clearInterval(G.tick); G.tick = null; Sound.tickOff(); }
+  function stopClock() { clearInterval(G.tick); G.tick = null; }
 
   /* ── Старт и финиш режима ────────────────────────────────────────────── */
 
@@ -600,7 +599,6 @@
 
     if (cfg.sound) {
       Sound.ensure();                   // жест уже есть — кнопка старта
-      Sound.tickOn();                   // «имитация очереди из гостей»
       const mute = document.createElement("button");
       mute.type = "button";
       mute.className = "ku-btn ghost s sx-mute";
@@ -705,7 +703,7 @@
       "</div>";
   }
 
-  /* Оценка гостя. Шкала из брифа задана в баллах (менее 40 / 60–80 / 100), но
+  /* Оценка Гостя. Шкала из брифа задана в баллах (менее 40 / 60–80 / 100), но
      максимумы режимов разные (50, 25, 75), а «100 баллов» не существует нигде.
      Поэтому шкала переведена в ПРОЦЕНТЫ от максимума режима — только так она
      работает во всех четырёх прогонах. Пробелы 40–59 и 81–99 заполнены. */
@@ -774,7 +772,7 @@
         '<span class="sx-check__num">Заказ №' + (i + 1) + "</span>" +
         "<span>" + (res.correct
           ? "Ты положил <b>" + nm(res.put) + "</b> — верно."
-          : "Ты положил <b>" + nm(res.put) + "</b>, а гость просил <b>" +
+          : "Ты положил <b>" + nm(res.put) + "</b>, а Гость просил <b>" +
             nm(res.target) + "</b>.") +
         "</span></div>").join("");
 
@@ -817,9 +815,9 @@
   function resultM3(cfg, r) {
     const rank = rankOf(cfg, r);
     const texts = {
-      gold:   "Ты — мастер внимания! Твои гости всегда будут сыты и довольны.",
+      gold:   "Ты — мастер внимания! Твои Гости всегда будут сыты и довольны.",
       silver: "Хороший результат, но есть куда расти. Перечитай этикетки ещё раз.",
-      bronze: "Провал. Ты потерял этих гостей навсегда. Рекомендуем вернуться " +
+      bronze: "Провал. Ты потерял этих Гостей навсегда. Рекомендуем вернуться " +
               "к Режиму №1 «Тренировка осознанности».",
     };
     const gold = rank === "gold";
@@ -1183,7 +1181,7 @@
     const dishAcc = chosen ? chosen.dataset.dishAcc : "своё блюдо";
 
     const scene = $("#m1-bag");
-    $("#m1-bag-art").innerHTML = window.SCENES.bag(dishKey);
+    $("#m1-bag-art").innerHTML = window.SCENES.bag(dishKey, { glow: true });
     $("#m1-bag-sauce").innerHTML = slot(wrong, true, false);
     scene.classList.add("is-open");
     $("#m1-bag-caption").innerHTML =
@@ -1244,7 +1242,9 @@
     if (LB.prevFocus && LB.prevFocus.focus) LB.prevFocus.focus({ preventScroll: true });
   }
 
-  const FIND = { target: "thousand-islands", t0: 0, on: false };
+  /* Цель — «Горчичный»: жёлтая группа самая большая (5 соусов), поэтому по
+     цвету его не вычислить и приходится открывать этикетки. */
+  const FIND = { target: "mustard", t0: 0, on: false };
 
   function initModule3() {
     const map = $("#m3-map");
@@ -1307,6 +1307,7 @@
   function startFind() {
     FIND.t0 = Date.now();
     FIND.on = true;
+    FIND.tries = 0;
     $("#m3-find-start").disabled = true;
     const fb = $("#fb-m3-find");
     fb.className = "ku-feedback";
@@ -1318,11 +1319,12 @@
 
   function checkFind(slug) {
     if (!FIND.on) return;
+    FIND.tries = (FIND.tries || 0) + 1;
     const fb = $("#fb-m3-find");
     if (slug !== FIND.target) {
       fb.className = "ku-feedback show incorrect";
-      fb.innerHTML = "<strong>Это другой соус.</strong> Ищи название " +
-        "«Тысяча островов» — открывай этикетки и читай, а не угадывай по цвету.";
+      fb.innerHTML = "<strong>Это другой соус.</strong> Ищи «Горчичный» — " +
+        "открывай этикетки и читай названия.";
       return;
     }
     FIND.on = false;
@@ -1331,9 +1333,11 @@
     const found = $('#m3-map [data-slug="' + FIND.target + '"]');
     if (found) found.classList.add("correct");
     fb.className = "ku-feedback show correct";
-    fb.innerHTML = "<strong>Нашёл за " + sec + " с.</strong> Отлично! Ты только что " +
-      "доказал сам себе, что это быстро и удобно. На чтение одного слова уходит " +
-      "0,5 секунды — быстрее, чем ты моргаешь.";
+    fb.innerHTML = "<strong>Ты искал " + sec + " с</strong> и открыл " + FIND.tries +
+      " " + plural(FIND.tries, "этикетку", "этикетки", "этикеток") + ".<br>" +
+      "Вот сколько времени уходит, когда название не прочитать сразу: по одному " +
+      "цвету нужный соус не находится — жёлтых этикеток пять, и они похожи. " +
+      "На стеллаже будет так же, если хватать упаковку не глядя.";
     $("#m3-find-start").disabled = false;
     window.KU.progress.markDone("m3-find");
   }
@@ -1345,30 +1349,57 @@
     if (!host) return;
     const demo = shuffled(window.SAUCES).slice(0, 10);
     const order = demo[3];
+    // Выноски привязаны к трём зонам поля: человек сразу видит, что где,
+    // и не собирает картинку из текста.
     host.innerHTML =
-      '<div class="sx-field" aria-hidden="true">' +
-        '<div class="sx-status"><span class="ku-badge">Режим 1</span>' +
-          '<span class="ku-badge">Заказ 1 / 10</span>' +
-          '<span class="sx-status__spacer"></span>' +
-          '<span class="ku-badge">⏱ 3,2 с</span>' +
-          '<span class="ku-badge">5 б.</span></div>' +
-        '<div class="sx-order"><span class="sx-order__label">К заказу:</span>' +
-          '<span class="sx-order__name">' + esc(order.name) + "</span></div>" +
-        '<div class="sx-shelf">' + demo.map((s) =>
-          '<span class="sx-bin' + (s.shape === "round" ? " is-round" : "") +
-            '" style="--c1:' + s.c1 + ";--c2:" + s.c2 + '">' +
-            '<span class="sx-bin__corner"></span>' +
-            '<span class="sx-bin__tag">' + esc(s.short) + "</span></span>").join("") +
+      '<div class="sx-preview__stage">' +
+        '<div class="sx-field" aria-hidden="true">' +
+          '<div class="sx-order" data-zone="order">' +
+            '<span class="sx-order__label">К заказу:</span>' +
+            '<span class="sx-order__name">' + esc(order.name) + "</span></div>" +
+          '<div class="sx-shelf" data-zone="shelf">' + demo.map((s2) =>
+            '<span class="sx-bin' + (s2.shape === "round" ? " is-round" : "") +
+              '" style="--c1:' + s2.c1 + ";--c2:" + s2.c2 + '">' +
+              '<span class="sx-bin__corner"></span>' +
+              '<span class="sx-bin__tag">' + esc(s2.short) + "</span></span>").join("") +
+          "</div>" +
+          '<div class="sx-bag" data-zone="bag">' +
+            '<span class="sx-bag__label">Пакет заказа</span></div>' +
         "</div>" +
-        '<div class="sx-hand"><span class="sx-cup">' + slot(order, true, true) +
-          '</span><div class="sx-hand__actions">' +
-          '<span class="ku-btn primary s">Положить в пакет</span>' +
-          '<span class="ku-btn soft s">Приблизить</span>' +
-          '<span class="ku-btn ghost s">Другой соус</span></div></div>' +
-        '<div class="sx-bag"><span class="sx-bag__label">Пакет заказа</span></div>' +
+        '<span class="sx-callout" data-for="order">Заказ Гостя</span>' +
+        '<span class="sx-callout" data-for="shelf">Соусы</span>' +
+        '<span class="sx-callout" data-for="bag">Пакет с заказом</span>' +
       "</div>" +
       '<p class="sx-preview__cap">Так будет выглядеть рабочая зона. Этикетка в руке ' +
         "размыта — прочитать название можно, только нажав «Приблизить».</p>";
+  }
+
+  /* ══ 11b. СЦЕНЫ И ШАГИ АЛГОРИТМА ════════════════════════════════════ */
+
+  function renderScenes() {
+    const street = $("#m1-scene-street");
+    if (street) street.insertAdjacentHTML("afterbegin", window.SCENES.street());
+    const home = $("#m1-scene-home");
+    if (home) home.insertAdjacentHTML("afterbegin", window.SCENES.home());
+
+    // Модуль 5: «Правило трёх касаний» горизонтальным рядом кадров
+    const steps = $("#m5-steps");
+    if (steps) {
+      const sub = [
+        "Одно касание. Пока ничего не решаешь.",
+        "Так, чтобы было видно текст, а не только цвет.",
+        "Убедился, что это «Барбекю», а не «Кетчуп».",
+      ];
+      let html = "";
+      for (let i = 0; i < window.SCENES.stepCount(); i++) {
+        html += '<figure class="sx-step">' +
+          '<span class="sx-step__num">' + (i + 1) + "</span>" +
+          '<span class="sx-step__art">' + window.SCENES.step(i) + "</span>" +
+          "<figcaption><b>" + esc(window.SCENES.stepTitle(i)) + "</b>" +
+          "<span>" + esc(sub[i] || "") + "</span></figcaption></figure>";
+      }
+      steps.innerHTML = html;
+    }
   }
 
   /* ══ 12. МОДУЛЬ 6 · СВОДКА НА ФИНАЛЕ ═════════════════════════════════ */
@@ -1390,6 +1421,7 @@
     initModule1();
     initModule3();
     renderPreview();
+    renderScenes();
 
     $$("[data-mode-card]").forEach((card) => card.addEventListener("click", () => {
       if (card.classList.contains("locked")) { alertGate(card.dataset.modeCard); return; }
