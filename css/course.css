@@ -608,6 +608,11 @@ body::before {
 .sx-pick {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  /* Ряды одной высоты. На 360px «Испорченный вечер» переносится в три строки,
+     а резерв подписи — две: без 1fr ряд с этой кнопкой становился выше соседнего
+     (144 против 159px) — тот же дефект «съезжания», что был у карточек. Правило
+     общее: .sx-emotions тоже .sx-pick, и выбор закуски защищён заодно. */
+  grid-auto-rows: 1fr;
   gap: var(--ku-space-2xs);
 }
 .sx-pick__btn {
@@ -643,12 +648,27 @@ body::before {
   align-items: center;
   justify-content: center;
   min-height: 2.5em;
+  /* Длинное неразрывное слово не должно распирать кнопку. «Разочарование»
+     (~91px) вылезало за кнопку в полосе 360–375px, где сетка переходит на три
+     колонки и кнопка сужается до 89px. Точки переноса — мягкие переносы в
+     разметке; hyphens: auto подхватит и будущие длинные подписи. */
+  min-width: 0;
+  max-width: 100%;
+  /* anywhere, а не break-word. В Chrome на Windows нет русского словаря
+     переносов, поэтому hyphens: auto не разбил «Испорченный» на 360px. Основные
+     точки разрыва — мягкие переносы в разметке; anywhere срабатывает, только
+     если их не хватило, и гарантирует, что подпись не вылезет из кнопки. */
+  overflow-wrap: anywhere;
+  hyphens: auto;
   text-align: center;
 }
 .sx-pick__btn.correct,
 .sx-pick__btn.is-on { border-color: var(--ku-brand); background: var(--ku-brand-soft); }
 .sx-pick__btn.is-off { opacity: 0.45; }
 .sx-pick__btn[disabled] { cursor: default; }
+/* Элемент сетки по умолчанию не уже своего содержимого: без min-width: 0
+   длинная подпись расширяла бы колонку и ломала ряд. */
+.sx-pick__btn { min-width: 0; }
 
 /* Эмоции: иллюстрация + подпись. Подпись остаётся — «Бессилие» и
    «Испорченный вечер» рисунком однозначно не передать. */
@@ -657,7 +677,10 @@ body::before {
   grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
   gap: var(--ku-space-2xs);
 }
-.sx-emotions .sx-pick__btn svg { height: 5rem; }
+/* И рисунок-заглушка, и сгенерированная картинка — одной высоты, иначе ряд
+   с частично заменёнными эмоциями разъедется. */
+.sx-emotions .sx-pick__btn svg,
+.sx-emotions .sx-pick__btn img { height: 5rem; }
 .sx-emotions .sx-pick__btn { font-size: 0.78rem; padding-inline: var(--ku-space-3xs); }
 
 /* Сетка соусов для выбора «идеальных» и «испорченных» */

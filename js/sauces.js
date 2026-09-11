@@ -57,11 +57,13 @@
     { slug: "spicy",            name: "Острый",             brand: "Burger King",
       full: "Острый соус, Burger King Премиум",
       c1: "#6C240C", c2: "#E4540C", group: "brown",  shape: "rect" },
-    // ЗАГЛУШКА: настоящей этикетки нет, промт — в assets/ASSETS.md
+    // Этикетка сгенерирована (фото настоящей упаковки не было). Флаг
+    // placeholder снят: с ним поверх готовой этикетки рисовалась плашка
+    // «ЗАГЛУШКА». Цвета извлечены из новой этикетки тем же способом, что у
+    // остальных, — прежние были цветами заглушки.
     { slug: "grill",            name: "Гриль",              brand: "Burger King",
       full: "Гриль соус, Burger King",
-      c1: "#543C24", c2: "#84543C", group: "brown",  shape: "rect",
-      placeholder: true },
+      c1: "#3C240C", c2: "#E48454", group: "brown",  shape: "rect" },
 
     // ── зелёная группа ───────────────────────────────────────────────────
     { slug: "smetana-luk",      name: "Сметанно-луковый",   brand: "Burger King",

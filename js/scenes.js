@@ -6,8 +6,8 @@
    масштабируется без потерь, работает офлайн.
 
    ИСТОЧНИК СТИЛЯ ДЛЯ РАСТРА — burger_king_style_2d.ru.json в корне проекта
-   («Детализированная 2D-иллюстрация»). Готовое задание на генерацию всех 21
-   кадра собрано из этой библии скриптом tools/build_prompts.py и лежит в
+   («Детализированная 2D-иллюстрация»). Готовое задание на генерацию всех 23
+   кадров собрано из этой библии скриптом tools/build_prompts.py и лежит в
    assets/scene/prompts.json (машиночитаемо) и assets/scene/PROMPTS.md.
    Векторные рисунки ниже — рабочая заглушка до появления растра.
 
@@ -42,21 +42,25 @@
      картинок — в LMS они могут не отдаться. */
   const PHOTOS = {
     // ── среда ──────────────────────────────────────────────────────────
-    "restaurant-bg": false,   // размытый зал — фон всего курса, 16:9
-    "street": false,          // вечерняя улица, вдалеке светится ресторан
-    "home": false,            // дома всё серое, светится только пакет
+    "restaurant-bg": true,   // размытый зал — фон всего курса, 16:9
+    "street": true,          // вечерняя улица, вдалеке светится ресторан
+    "home": true,            // дома всё серое, светится только пакет
     // ── предметы ───────────────────────────────────────────────────────
-    "bag": false,             // крафтовый пакет на вынос
-    "nuggets": false, "fries": false, "wings": false,
+    // Пакет на шаге 4 — по варианту на каждую закуску из шага 1: внутри
+    // должна быть видна именно та закуска, которую выбрал Гость.
+    "bag-fries": true,       // bag.webp с фри внутри — он и стал этим вариантом
+    "bag-nuggets": false,    // ждёт генерации, пока рисуется вектор с наггетсами
+    "bag-wings": false,      // ждёт генерации, пока рисуется вектор с крылышками
+    "nuggets": true, "fries": true, "wings": true,
     // ── реакция Гостя на итогах: 1 ярость … 5 радость ──────────────────
-    "guest-1": false, "guest-2": false, "guest-3": false,
-    "guest-4": false, "guest-5": false,
+    "guest-1": true, "guest-2": true, "guest-3": true,
+    "guest-4": true, "guest-5": true,
     // ── эмоции для сетки выбора в модуле 1 ─────────────────────────────
-    "emotion-anger": false, "emotion-disappointment": false,
-    "emotion-sadness": false, "emotion-helpless": false,
-    "emotion-ruined-evening": false,
+    "emotion-anger": true, "emotion-disappointment": true,
+    "emotion-sadness": true, "emotion-helpless": true,
+    "emotion-ruined-evening": true,
     // ── кадры «Правила трёх касаний» ───────────────────────────────────
-    "step-1": false, "step-2": false, "step-3": false,
+    "step-1": true, "step-2": true, "step-3": true,
     // Обложка курса кладётся НЕ сюда, а в assets/hero.webp — дизайн-система
     // подхватит файл сама, флаг ей не нужен.
   };
@@ -592,9 +596,15 @@
       ? photo("guest-" + level, "Реакция Гостя")
       : guestSvg(level),
     stars: starsSvg,
-    bag: (dishKey, opts) => PHOTOS.bag
-      ? photo("bag", "Пакет с заказом")
-      : bagSvg(dishKey, opts),
+    /* Раньше тут был один общий пакет, и в нём на картинке всегда лежала
+       картошка фри — даже если Гость выбрал наггетсы. Теперь слот зависит от
+       выбранной закуски. Нет фото нужного варианта — рисуем вектор С ТОЙ ЖЕ
+       закуской: чужая закуска на фото хуже, чем честная заглушка. */
+    bag: (dishKey, opts) => {
+      const key = DISH[dishKey] ? dishKey : "fries";
+      const slot = "bag-" + key;
+      return PHOTOS[slot] ? photo(slot, "Пакет с заказом") : bagSvg(key, opts);
+    },
     dish: (key) => PHOTOS[key] ? photo(key, key) : (DISH[key] || ""),
     street: () => PHOTOS.street
       ? photo("street", "Вечерняя улица, вдалеке светится ресторан Burger King")
@@ -612,8 +622,14 @@
 
   /* Фон вешаем один раз на корень документа — одна картинка на весь курс. */
   function applyBackdrop() {
+    /* Адрес обязан быть АБСОЛЮТНЫМ. Относительный url() внутри CSS-переменной
+       браузер разрешает от файла стилей, где переменная используется
+       (css/course.css), а не от страницы. Итог был запрос
+       /css/assets/scene/restaurant-bg.webp → 404, и фото зала не грузилось
+       вообще. Пока фоном был встроенный SVG (data-URI, он и так абсолютный),
+       ошибка не проявлялась — вылезла, как только включили фото. */
     const url = PHOTOS["restaurant-bg"]
-      ? "assets/scene/restaurant-bg.webp"
+      ? new URL("assets/scene/restaurant-bg.webp", document.baseURI).href
       : backdropSvg();
     document.documentElement.style.setProperty(
       "--sx-backdrop", 'url("' + url + '")');
