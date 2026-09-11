@@ -200,8 +200,9 @@ body::before {
   transition: transform var(--ku-dur-fast) var(--ku-ease-spring),
               box-shadow var(--ku-dur-fast) var(--ku-ease);
 }
-.sx-bin:hover  { transform: translateY(-2px); box-shadow: var(--ku-shadow-s); }
-.sx-bin:active { transform: translateY(0); }
+/* Без подъёма: у ячейки overflow: hidden, и подъём дрожал бы у края под
+   неподвижным курсором (см. раздел 16a). Отклик — тень и рамка. */
+.sx-bin:hover { box-shadow: var(--ku-shadow-s); border-color: var(--ku-brand); }
 .sx-bin:focus-visible { outline: 3px solid var(--ku-brand-ring); outline-offset: 2px; }
 
 /* Цветной уголок этикетки, торчащий из ячейки. --c1/--c2 из js/sauces.js */
@@ -551,6 +552,48 @@ body::before {
 /* Режим задания на скорость: этикетки заблюрены, подписей нет */
 .sx-map.is-task .sx-map__item figcaption { display: none; }
 
+/* Два шага блока: «Изучи этикетки → Задание на скорость». Стоят над сеткой,
+   чтобы про задание было известно до того, как начнёшь листать этикетки. */
+.sx-plan {
+  display: flex;
+  align-items: center;
+  gap: var(--ku-space-2xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sx-plan li {
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  min-width: 0;
+  font: 600 0.8rem/1.2 var(--ku-font-body);
+  color: var(--ku-text-muted);
+}
+/* Соединительная черта между шагами */
+.sx-plan li + li::before {
+  content: "";
+  flex: 0 0 1.25rem;
+  height: 2px;
+  margin-right: 0.2em;
+  border-radius: 1px;
+  background: var(--ku-border);
+}
+.sx-plan__num {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  font: 700 0.8rem/1 var(--ku-font-display);
+  color: var(--ku-text-soft);
+  background: var(--ku-surface-2);
+}
+.sx-plan li.is-now { color: var(--ku-text); }
+.sx-plan li.is-now .sx-plan__num { color: var(--ku-brand-on); background: var(--ku-brand); }
+.sx-plan li.is-done .sx-plan__num { color: #fff; background: var(--ku-success); }
+
 /* ══ 11. ПОЛНЫЙ ЭКРАН ЭТИКЕТКИ (модуль 3) ══════════════════════════════
    Задача механики — чтобы сотрудник реально прочитал название. Увеличение
    на 6% этого не даёт, поэтому здесь настоящий полноэкранный просмотр. */
@@ -735,6 +778,10 @@ body::before {
 .sx-bagscene__art img {
   display: block; width: 100%; height: auto;
 }
+/* Место под картинку занято ДО её загрузки (все три пакета 1000×1000).
+   Без этого img до загрузки нулевой высоты, и докрутка к пакету в
+   trainer.js промахивается: картинка потом выталкивает «Дальше» за экран. */
+.sx-bagscene__art img { aspect-ratio: 1 / 1; object-fit: contain; }
 .sx-bag__flap {
   transform-origin: 50% 100%;
   transition: transform var(--ku-dur-slow) var(--ku-ease-out);
@@ -890,6 +937,42 @@ body::before {
 .sx-mode.locked:hover { transform: none; border-color: var(--ku-border); }
 .sx-mode.done { border-color: var(--ku-success); }
 .sx-mode.done .sx-mode__num { background: var(--ku-success); }
+
+/* ══ 16a. ПОДЪЁМ НА НАВЕДЕНИИ БЕЗ ДРОЖАНИЯ ═════════════════════════════
+   Кнопки и карточки на ховере приподнимаются на 2–3px. Если курсор стоит у
+   самого нижнего края, кнопка уезжает из-под него, ховер снимается, кнопка
+   опускается обратно под курсор — и так по кругу. Выглядит, будто кнопку
+   нажимают (у .primary ещё и каждый раз пробегает блик). Замер на
+   «Положить в пакет»: неподвижный курсор, 33 входа-выхода за 1,5 с.
+   Лечение: пока элемент поднят, под ним висит невидимая полоска на высоту
+   подъёма, и курсор остаётся «на кнопке» там, где она стояла. Полоска
+   существует только при ховере, поэтому зону наведения она не расширяет.
+   Где у элемента overflow: hidden (полоску бы обрезало) — подъём снят,
+   остались тень и рамка: .sx-bin в разделе 3 и .ku-stat ниже. */
+.sx-pick__btn, .sx-map__item, .sx-mode, .ku-choice { position: relative; }
+.ku-btn:hover::before,
+.sx-pick__btn:hover::before,
+.sx-choose__btn:hover::before,
+.sx-map__item:hover::before,
+.sx-mode:hover::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 4px;                       /* самый большой подъём — 3px */
+}
+/* .ku-choice на ховере уезжает ВПРАВО — полоска слева */
+.ku-choice:hover:not(:disabled)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 100%;
+  width: 4px;
+}
+/* Карточка цифры (модуль 2): overflow: hidden и занятый ::before в ДС */
+.ku-stat:hover { transform: none; }
 
 /* ══ 17. МЕЛОЧИ ════════════════════════════════════════════════════════ */
 .sx-mute {

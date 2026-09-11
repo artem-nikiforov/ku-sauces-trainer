@@ -1123,6 +1123,8 @@
 
     const openBtn = $("#m1-open-bag");
     if (openBtn) openBtn.addEventListener("click", openBag);
+    const bagNext = $("#m1-bag-next");
+    if (bagNext) bagNext.addEventListener("click", toEmotionStep);
 
     $$("[data-emotion]").forEach((btn) => btn.addEventListener("click", () => {
       $$("[data-emotion]").forEach((b) => b.classList.remove("is-on"));
@@ -1136,6 +1138,8 @@
       $$("[data-return]").forEach((b) => b.classList.remove("is-on"));
       btn.classList.add("is-on");
       setVar(V.ret, btn.dataset.return);
+      // Вывод под ответ: «умножь эту эмоцию» после «Да» звучит как упрёк
+      $$("[data-outro]").forEach((t) => { t.hidden = t.dataset.outro !== btn.dataset.return; });
       $("#m1-outro").hidden = false;
       window.KU.progress.markDone("m1-empathy");
       $("#m1-outro").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1188,10 +1192,23 @@
       "Ты заказал <b>" + esc(dishAcc) + "</b>. А в пакете лежит <b>" +
       nm(wrong) + "</b> — тот самый соус, который ты только что назвал " +
       "неподходящим.";
+    // К шагу 5 человек переходит сам, кнопкой «Дальше», когда рассмотрел
+    // пакет. Раньше шаг 5 открывался и прокручивался сам через 0,6 с — пакет
+    // уезжал вверх раньше, чем его успевали увидеть.
+    $("#m1-open-bag").hidden = true;
+    $("#m1-bag-next").hidden = false;
+    // Шаг 4 последний на странице, и рисунок пакета появляется только сейчас:
+    // он выталкивает подпись и «Дальше» за нижний край. Докручиваем ровно
+    // настолько, чтобы пакет был виден целиком (nearest — не дальше). Высота
+    // рисунка известна сразу, ещё до загрузки картинки: её держит
+    // aspect-ratio в css/course.css, раздел 13.
+    scene.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function toEmotionStep() {
+    $("#m1-bag-next").hidden = true;
     $("#m1-step-emotion").hidden = false;
-    $("#m1-open-bag").disabled = true;
-    setTimeout(() => $("#m1-step-emotion").scrollIntoView({
-      behavior: "smooth", block: "start" }), 600);
+    $("#m1-step-emotion").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   /* ══ 10. МОДУЛЬ 3 · СЕКРЕТ ЭТИКЕТКИ ══════════════════════════════════ */
@@ -1308,7 +1325,9 @@
     FIND.t0 = Date.now();
     FIND.on = true;
     FIND.tries = 0;
-    $("#m3-find-start").disabled = true;
+    $("#m3-find-start").hidden = true;
+    $("#m3-find-intro").hidden = true;
+    setPlan("find");
     const fb = $("#fb-m3-find");
     fb.className = "ku-feedback";
     fb.innerHTML = "";
@@ -1338,8 +1357,20 @@
       "Вот сколько времени уходит, когда название не прочитать сразу: по одному " +
       "цвету нужный соус не находится — жёлтых этикеток пять, и они похожи. " +
       "На стеллаже будет так же, если хватать упаковку не глядя.";
-    $("#m3-find-start").disabled = false;
+    $("#m3-find-task").hidden = true;    // «Время пошло» уже неправда
+    $("#m3-find-label").textContent = "Пройти задание ещё раз";
+    $("#m3-find-start").hidden = false;
+    setPlan("done");
     window.KU.progress.markDone("m3-find");
+  }
+
+  /* Шаги над сеткой: study — изучает, find — идёт задание, done — оба пройдены */
+  function setPlan(stage) {
+    $$("#m3-plan [data-plan]").forEach((li) => {
+      const isFind = li.dataset.plan === "find";
+      li.classList.toggle("is-now", stage === "study" ? !isFind : stage === "find" && isFind);
+      li.classList.toggle("is-done", stage === "done" || (stage === "find" && !isFind));
+    });
   }
 
   /* ══ 11. ПРЕВЬЮ ТРЕНАЖЁРА (вступление модуля 4) ══════════════════════ */

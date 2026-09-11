@@ -235,6 +235,11 @@
             <svg class="ku-ico"><use href="#i-bag"/></svg> Открыть пакет
           </button>
           <p class="ku-small" id="m1-bag-caption" style="text-align:center"></p>
+          <!-- Шаг 5 открывается по кнопке, а не сам: иначе пакет уезжает вверх
+               раньше, чем человек успевает рассмотреть, что в нём -->
+          <button type="button" class="ku-btn primary ku-reveal" id="m1-bag-next" hidden>
+            Дальше <svg class="ku-ico arrow"><use href="#i-right"/></svg>
+          </button>
         </div>
       </div>
 
@@ -285,8 +290,15 @@
         <div class="ku-space m"></div>
         <div class="ku-callout">
           <span class="ku-callout__icon"><svg class="ku-ico l"><use href="#i-bulb"/></svg></span>
-          <div><div class="ku-callout__title">А теперь умножь эту эмоцию на 100 Гостей в день</div>
+          <!-- Текст зависит от ответа: сценарный подходит только к «Нет».
+               Какой показать — решает js/trainer.js по data-outro -->
+          <div data-outro="Нет"><div class="ku-callout__title">А теперь умножь эту эмоцию на 100 Гостей в день</div>
             <p>Именно это чувство ежедневно испытывают твои Гости, когда ты ошибаешься.
+               Хочешь это исправить? Тогда поехали дальше!</p></div>
+          <div data-outro="Да" hidden><div class="ku-callout__title">Ты бы вернулся. А вот многие Гости — нет</div>
+            <p>Ты готов дать ресторану второй шанс. Но не каждый Гость такой терпеливый:
+               многие после такой ошибки просто уходят к конкурентам и даже не говорят
+               почему. А теперь представь, что так бывает у 100 Гостей в день.
                Хочешь это исправить? Тогда поехали дальше!</p></div>
         </div>
         <div class="next-row" style="margin-top:var(--ku-space-l);display:flex;justify-content:center">
@@ -459,14 +471,33 @@
       <!-- ── Экран 2: интерактивная карта соусов ────────────────────────── -->
       <div class="ku-exercise ku-reveal" data-ku-id="m3-find">
         <div class="ku-exercise__label">Виды соусов</div>
+        <!-- Задание на скорость объявлено ДО сетки. Когда о нём говорила только
+             маленькая кнопка под сеткой, было непонятно, что оно вообще будет,
+             и этикетки пролистывали, не вчитываясь. Шаги переключает trainer.js -->
+        <ol class="sx-plan" id="m3-plan">
+          <li class="is-now" data-plan="study"><span class="sx-plan__num">1</span>Изучи этикетки</li>
+          <li data-plan="find"><span class="sx-plan__num">2</span>Задание на скорость</li>
+        </ol>
+        <div class="ku-space s"></div>
         <p class="ku-small ku-soft">Все 15 соусов на одном экране. Нажми на любой —
-          этикетка откроется на весь экран, и название можно спокойно прочитать.</p>
+          этикетка откроется на весь экран, и название можно спокойно прочитать.
+          <strong>Не торопись: следом будет задание на скорость</strong>, и подписей
+          под этикетками уже не будет.</p>
         <div class="ku-space s"></div>
         <div class="sx-map" id="m3-map"></div>
         <div class="ku-space s"></div>
+        <div class="ku-callout" id="m3-find-intro">
+          <span class="ku-callout__icon"><svg class="ku-ico l"><use href="#i-clock"/></svg></span>
+          <div><div class="ku-callout__title">Изучил? Теперь задание на скорость</div>
+            <p>Этикетки размоются, подписи исчезнут — останутся только цвета. Нужно
+               будет как можно быстрее найти один соус. Время пойдёт сразу после
+               нажатия кнопки.</p></div>
+        </div>
+        <div class="ku-space s"></div>
         <div class="ku-row center">
-          <button type="button" class="ku-btn primary s" id="m3-find-start">
-            <svg class="ku-ico"><use href="#i-clock"/></svg> Задание на скорость
+          <button type="button" class="ku-btn primary" id="m3-find-start">
+            <svg class="ku-ico"><use href="#i-clock"/></svg>
+            <span id="m3-find-label">Начать задание на скорость</span>
           </button>
         </div>
         <div id="m3-find-task" hidden>
